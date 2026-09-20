@@ -9,6 +9,7 @@
   const esc = (value) => String(value).replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
   const fmt = value => Number.isInteger(value) ? String(value) : Number(value.toFixed(2)).toString();
   const inputFmt = value => Number.isInteger(value) ? String(value) : Number(value.toFixed(8)).toString();
+  const filterTypes = [["mean","Mean"],["Gaussian","Gaussian"],["horizontal derivative","Horizontal derivative"]];
   const matrixHTML = matrix => `<div class="matrix" role="img" aria-label="Matrix with ${matrix.length} rows"><div style="--cols:${matrix[0].length}">${matrix.map(row => `<div class="matrix-row" style="--cols:${row.length}">${row.map(v => `<span>${fmt(v)}</span>`).join("")}</div>`).join("")}</div></div>`;
 
   function notebookUrl(file) {
@@ -113,12 +114,14 @@
       const currentParams = new URLSearchParams(location.search);
       const imageSize = Number(host.querySelector("#image-size")?.value || currentParams.get("imageSize") || 4);
       const kernelSize = Number(host.querySelector("#kernel-size")?.value || currentParams.get("kernelSize") || 3);
+      const filterType = host.querySelector("#filter-type")?.value || currentParams.get("filterType") || "";
       const rng = randomFactory(`${ln}:${type}:${seed}`);
-      const problem = generateProblem(ln,type,rng,{imageSize,kernelSize});
+      const problem = generateProblem(ln,type,rng,{imageSize,kernelSize,filterType});
       const query = new URLSearchParams({type,seed});
       if (ln===5 && type==="filter") {
         query.set("imageSize",String(imageSize));
         query.set("kernelSize",String(kernelSize));
+        query.set("filterType",problem.editor.filterType);
       }
       history.replaceState(null,"",`${location.pathname}?${query}#problem-lab`);
       host.querySelector("#problem").innerHTML = `<div class="problem-meta"><span>LN${ln}</span><span>Seed ${esc(seed)}</span><span>${esc(problem.level)}</span></div><h3>${esc(problem.title)}</h3><div class="problem-body">${problem.question}</div><div class="solution" hidden><h4>Worked solution</h4>${problem.solution}</div>`;
@@ -129,6 +132,7 @@
     function bindFilterEditor(editor) {
       host.querySelector("#image-size").addEventListener("change",generate);
       host.querySelector("#kernel-size").addEventListener("change",generate);
+      host.querySelector("#filter-type").addEventListener("change",generate);
       host.querySelector("#recalculate-filter").addEventListener("click",()=>{
         const image = readEditableMatrix("image",editor.image.length);
         const kernel = readEditableMatrix("kernel",editor.kernel.length);
@@ -270,7 +274,7 @@
   function filterEditorHTML(image,kernel,name){
     const imageSizes=Array.from({length:7},(_,index)=>index+4);
     const kernelSizes=[3,4,5];
-    return `<div class="manual-editor"><div class="manual-editor-heading"><div><h4>Manual filter inputs</h4><p>The seed creates the starting values. Change a size to rebuild from that seed, or edit any cell directly.</p></div><span class="input-mode">Editable</span></div><div class="dimension-controls"><label>Image size<select id="image-size">${imageSizes.map(size=>`<option value="${size}" ${size===image.length?"selected":""}>${size} × ${size}</option>`).join("")}</select></label><label>Kernel size<select id="kernel-size">${kernelSizes.map(size=>`<option value="${size}" ${size===kernel.length?"selected":""}>${size} × ${size}</option>`).join("")}</select></label><div class="generated-kernel"><span>Seeded kernel</span><strong>${esc(name)}</strong></div></div><div class="matrix-editor-layout"><fieldset><legend>Image values</legend>${editableMatrixHTML(image,"image","Image")}</fieldset><fieldset><legend>Kernel values</legend>${editableMatrixHTML(kernel,"kernel","Kernel")}</fieldset></div><div class="manual-actions"><button class="button button-primary" id="recalculate-filter">Recalculate solution</button><p id="manual-status" aria-live="polite">Manual edits stay in this browser; the variant link preserves the seed and dimensions.</p></div></div>`;
+    return `<div class="manual-editor"><div class="manual-editor-heading"><div><h4>Manual filter inputs</h4><p>The seed creates the starting image. Choose a filter or size to rebuild the kernel, or edit any cell directly.</p></div><span class="input-mode">Editable</span></div><div class="dimension-controls"><label>Filter type<select id="filter-type">${filterTypes.map(([value,label])=>`<option value="${value}" ${value===name?"selected":""}>${label}</option>`).join("")}</select></label><label>Image size<select id="image-size">${imageSizes.map(size=>`<option value="${size}" ${size===image.length?"selected":""}>${size} × ${size}</option>`).join("")}</select></label><label>Kernel size<select id="kernel-size">${kernelSizes.map(size=>`<option value="${size}" ${size===kernel.length?"selected":""}>${size} × ${size}</option>`).join("")}</select></label></div><div class="matrix-editor-layout"><fieldset><legend>Image values</legend>${editableMatrixHTML(image,"image","Image")}</fieldset><fieldset><legend>Kernel values</legend>${editableMatrixHTML(kernel,"kernel","Kernel")}</fieldset></div><div class="manual-actions"><button class="button button-primary" id="recalculate-filter">Recalculate solution</button><p id="manual-status" aria-live="polite">Manual edits stay in this browser; the variant link preserves the seed, filter, and dimensions.</p></div></div>`;
   }
   function generateLN5(type,rng,options={}) {
     if(type==="median"){
@@ -284,8 +288,9 @@
     const imageSize=Math.min(10,Math.max(4,Number(options.imageSize)||4));
     const kernelSize=[3,4,5].includes(Number(options.kernelSize))?Number(options.kernelSize):3;
     const image=Array.from({length:imageSize},()=>Array.from({length:imageSize},()=>int(rng,1,24)*10));
-    const name=pick(rng,["mean","Gaussian","horizontal derivative"]);
+    const allowedFilters=filterTypes.map(([value])=>value);
+    const name=allowedFilters.includes(options.filterType)?options.filterType:pick(rng,allowedFilters);
     const kernel=makeFilterKernel(name,kernelSize);
-    return {level:"Boundary handling",title:`${name[0].toUpperCase()+name.slice(1)} filter with three padding modes`,question:`<p>Apply cross-correlation at the top-left pixel using zero, symmetric, and circular padding. Edit the values or dimensions, then compare the three neighborhoods and outputs.</p>${filterEditorHTML(image,kernel,name)}`,solution:filterSolutionHTML(image,kernel),editor:{kind:"filter",image,kernel}};
+    return {level:"Boundary handling",title:`${name[0].toUpperCase()+name.slice(1)} filter with three padding modes`,question:`<p>Apply cross-correlation at the top-left pixel using zero, symmetric, and circular padding. Choose a filter, edit the values or dimensions, then compare the three neighborhoods and outputs.</p>${filterEditorHTML(image,kernel,name)}`,solution:filterSolutionHTML(image,kernel),editor:{kind:"filter",filterType:name,image,kernel}};
   }
 })();

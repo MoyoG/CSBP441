@@ -9,7 +9,7 @@ The GitHub Pages site is published from `docs/` and includes:
 - Colab notebooks;
 - interactive multiple-choice questions;
 - reproducible, seeded problem variants with worked solutions;
-- editable filtering inputs with 4 × 4 through 10 × 10 images, 3 × 3 through 5 × 5 kernels, and three padding modes.
+- selectable mean, Gaussian, and derivative filters with editable 4 × 4 through 10 × 10 images, 3 × 3 through 5 × 5 kernels, and three padding modes.
 
 Course site: <https://moyog.github.io/CSBP441/>
 

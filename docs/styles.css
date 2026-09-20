@@ -131,10 +131,7 @@ input, select { min-height: 42px; padding: 8px 10px; color: var(--ink); backgrou
 .manual-editor-heading h4 { margin: 0 0 4px; font-size: 1.05rem; }
 .manual-editor-heading p { margin: 0; color: var(--muted); }
 .input-mode { color: var(--teal); font-size: .78rem; font-weight: 800; text-transform: uppercase; }
-.dimension-controls { display: grid; grid-template-columns: minmax(140px,200px) minmax(140px,200px) minmax(160px,1fr); gap: 12px; align-items: end; }
-.generated-kernel { min-height: 42px; padding: 7px 0; display: grid; align-content: center; }
-.generated-kernel span { color: var(--muted); font-size: .75rem; font-weight: 700; }
-.generated-kernel strong { font-size: .92rem; }
+.dimension-controls { display: grid; grid-template-columns: repeat(3,minmax(140px,200px)); gap: 12px; align-items: end; }
 .matrix-editor-layout { margin-top: 18px; display: grid; grid-template-columns: minmax(0,1.2fr) minmax(380px,.8fr); gap: 22px; align-items: start; }
 .matrix-editor-layout fieldset { min-width: 0; margin: 0; padding: 12px 0 0; border: 0; border-top: 2px solid var(--navy); }
 .matrix-editor-layout legend { padding: 0 10px 0 0; color: var(--navy); font-size: .85rem; font-weight: 800; }
@@ -168,8 +165,7 @@ input, select { min-height: 42px; padding: 8px 10px; color: var(--ink); backgrou
   .lecture-sidebar nav { grid-template-columns: repeat(2,1fr); }
   .lecture-hero, .lecture-main { padding-left: 20px; padding-right: 20px; }
   .generator-controls { grid-template-columns: 1fr; }
-  .dimension-controls { grid-template-columns: 1fr 1fr; }
-  .generated-kernel { grid-column: 1 / -1; }
+  .dimension-controls { grid-template-columns: 1fr; }
   .manual-actions { align-items: flex-start; flex-direction: column; }
   .resource-list a, .notebook-item { grid-template-columns: 1fr; }
   footer { align-items: flex-start; flex-direction: column; justify-content: center; }
