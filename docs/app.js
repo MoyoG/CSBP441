@@ -241,16 +241,19 @@
     const reflectC=i=>i<0?-i-1:i>=w?2*w-i-1:i;
     return image[reflect(r)][reflectC(c)];
   }
-  function filterNeighborhood(image,kernel,mode){
+  function filterNeighborhood(image,kernel,mode,outputRow=0,outputCol=0){
     const anchor=Math.floor(kernel.length/2);
-    const patch=kernel.map((row,r)=>row.map((_,c)=>sample(image,r-anchor,c-anchor,mode)));
+    const patch=kernel.map((row,r)=>row.map((_,c)=>sample(image,outputRow+r-anchor,outputCol+c-anchor,mode)));
     const response=patch.reduce((sum,row,r)=>sum+row.reduce((rowSum,value,c)=>rowSum+value*kernel[r][c],0),0);
     return {patch,response};
   }
+  function filterOutput(image,kernel,mode){
+    return image.map((row,r)=>row.map((_,c)=>filterNeighborhood(image,kernel,mode,r,c).response));
+  }
   function filterSolutionHTML(image,kernel){
     const modes=["zero","symmetric","circular"];
-    const results=modes.map(mode=>[mode,filterNeighborhood(image,kernel,mode)]);
-    return `<p>Cross-correlation uses the kernel without flipping it. For this ${kernel.length} × ${kernel.length} kernel, the anchor index is ${Math.floor(kernel.length/2)}.</p><div class="padding-results">${results.map(([mode,result])=>`<section><h5>${mode[0].toUpperCase()+mode.slice(1)} padding</h5><p>Top-left neighborhood:</p>${matrixHTML(result.patch)}<p>Response = <strong>${fmt(result.response)}</strong></p></section>`).join("")}</div><p>The interior response is independent of padding; boundary responses differ because each mode supplies different values outside the image.</p>`;
+    const results=modes.map(mode=>[mode,filterNeighborhood(image,kernel,mode),filterOutput(image,kernel,mode)]);
+    return `<p>Cross-correlation uses the kernel without flipping it. For this ${kernel.length} × ${kernel.length} kernel, the anchor index is ${Math.floor(kernel.length/2)}. Each output has the same ${image.length} × ${image[0].length} size as the input.</p><div class="padding-results">${results.map(([mode,corner,output])=>`<section><h5>${mode[0].toUpperCase()+mode.slice(1)} padding</h5><div class="padding-case-content"><div><p>Top-left neighborhood:</p>${matrixHTML(corner.patch)}<p>Top-left response = <strong>${fmt(corner.response)}</strong> = output[0,0]</p></div><div class="full-filter-output"><p>Complete output image:</p>${matrixHTML(output)}</div></div></section>`).join("")}</div><p>Interior responses are independent of padding; boundary responses differ because each mode supplies different values outside the image.</p>`;
   }
   function binomialRow(size){
     const row=[1];

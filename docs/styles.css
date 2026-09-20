@@ -140,10 +140,12 @@ input, select { min-height: 42px; padding: 8px 10px; color: var(--ink); backgrou
 .editable-matrix input { width: 70px; min-height: 37px; padding: 5px 6px; text-align: right; font: 600 .84rem/1.2 "Cambria Math", Consolas, monospace; }
 .manual-actions { margin-top: 16px; display: flex; align-items: center; gap: 16px; }
 .manual-actions p { margin: 0; color: var(--muted); font-size: .84rem; }
-.padding-results { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 22px; }
-.padding-results section { min-width: 0; padding-top: 10px; border-top: 1px solid var(--line); overflow-x: auto; }
-.padding-results h5 { margin: 0; font-size: .95rem; }
-.padding-results section > p { margin: 5px 0; color: var(--muted); font-size: .86rem; }
+.padding-results { display: grid; gap: 26px; }
+.padding-results section { min-width: 0; padding-top: 12px; border-top: 1px solid var(--line); }
+.padding-results h5 { margin: 0 0 8px; font-size: 1rem; }
+.padding-case-content { display: grid; grid-template-columns: minmax(220px,.4fr) minmax(0,1fr); gap: 28px; align-items: start; }
+.padding-case-content p { margin: 5px 0; color: var(--muted); font-size: .86rem; }
+.full-filter-output { min-width: 0; overflow-x: auto; }
 
 @media (max-width: 920px) {
   .lecture-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
@@ -152,7 +154,7 @@ input, select { min-height: 42px; padding: 8px 10px; color: var(--ink); backgrou
   .lecture-sidebar { min-height: 0; position: static; }
   .lecture-sidebar nav { grid-template-columns: repeat(3,1fr); gap: 0 15px; }
   .workflow { grid-template-columns: repeat(2,1fr); }
-  .matrix-editor-layout, .padding-results { grid-template-columns: 1fr; }
+  .matrix-editor-layout, .padding-case-content { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
   .site-header { padding: 12px 18px; align-items: flex-start; }
