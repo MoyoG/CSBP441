@@ -8,7 +8,8 @@ The GitHub Pages site is published from `docs/` and includes:
 - theoretical summaries and hands-on workflows;
 - Colab notebooks;
 - interactive multiple-choice questions;
-- reproducible, seeded problem variants with worked solutions.
+- reproducible, seeded problem variants with worked solutions;
+- editable filtering inputs with 4 × 4 through 10 × 10 images, 3 × 3 through 5 × 5 kernels, and three padding modes.
 
 Course site: <https://moyog.github.io/CSBP441/>
 

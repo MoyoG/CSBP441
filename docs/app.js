@@ -8,6 +8,7 @@
 
   const esc = (value) => String(value).replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
   const fmt = value => Number.isInteger(value) ? String(value) : Number(value.toFixed(2)).toString();
+  const inputFmt = value => Number.isInteger(value) ? String(value) : Number(value.toFixed(8)).toString();
   const matrixHTML = matrix => `<div class="matrix" role="img" aria-label="Matrix with ${matrix.length} rows"><div style="--cols:${matrix[0].length}">${matrix.map(row => `<div class="matrix-row" style="--cols:${row.length}">${row.map(v => `<span>${fmt(v)}</span>`).join("")}</div>`).join("")}</div></div>`;
 
   function notebookUrl(file) {
@@ -36,7 +37,7 @@
           <section class="lecture-section" id="hands-on"><p class="eyebrow">Hands-on material</p><h2>From theory to evidence</h2><div class="workflow">${data.handsOn.map((x,i)=>`<div><span>0${i+1}</span><h3>${esc(x[0])}</h3><p>${esc(x[1])}</p></div>`).join("")}</div></section>
           <section class="lecture-section" id="notebooks"><p class="eyebrow">Colab</p><h2>Run the notebooks</h2><div class="notebook-list">${data.notebooks.map(x=>`<div class="notebook-item"><div><strong>${esc(x[0])}</strong><p>${esc(x[1])}</p></div><div class="button-row"><a class="button button-primary" target="_blank" rel="noopener" href="${notebookUrl(x[2])}">Open in Colab</a><a class="button button-secondary" href="notebooks/${encodeURIComponent(x[2])}">Download</a></div></div>`).join("")}</div></section>
           <section class="lecture-section" id="knowledge-check"><p class="eyebrow">Self-check</p><h2>Interactive MCQs</h2><div id="quiz"></div></section>
-          <section class="lecture-section" id="problem-lab"><p class="eyebrow">Exam practice</p><h2>Parameterized problem generator</h2><p>Use the same seed to reproduce a question. Change the seed for a new numerical variant.</p><div id="generator"></div></section>
+          <section class="lecture-section" id="problem-lab"><p class="eyebrow">Exam practice</p><h2>Parameterized problem generator</h2><p>Use the same seed to reproduce a question, or edit the generated inputs and recalculate. Filtering problems also support image sizes from 4 × 4 to 10 × 10 and 3 × 3, 4 × 4, or 5 × 5 kernels.</p><div id="generator"></div></section>
         </div>
       </main>
     </div>
@@ -109,13 +110,46 @@
     function generate() {
       const type = host.querySelector("#problem-type").value;
       const seed = host.querySelector("#problem-seed").value.trim() || "441";
+      const currentParams = new URLSearchParams(location.search);
+      const imageSize = Number(host.querySelector("#image-size")?.value || currentParams.get("imageSize") || 4);
+      const kernelSize = Number(host.querySelector("#kernel-size")?.value || currentParams.get("kernelSize") || 3);
       const rng = randomFactory(`${ln}:${type}:${seed}`);
-      const problem = generateProblem(ln,type,rng);
+      const problem = generateProblem(ln,type,rng,{imageSize,kernelSize});
       const query = new URLSearchParams({type,seed});
+      if (ln===5 && type==="filter") {
+        query.set("imageSize",String(imageSize));
+        query.set("kernelSize",String(kernelSize));
+      }
       history.replaceState(null,"",`${location.pathname}?${query}#problem-lab`);
       host.querySelector("#problem").innerHTML = `<div class="problem-meta"><span>LN${ln}</span><span>Seed ${esc(seed)}</span><span>${esc(problem.level)}</span></div><h3>${esc(problem.title)}</h3><div class="problem-body">${problem.question}</div><div class="solution" hidden><h4>Worked solution</h4>${problem.solution}</div>`;
       host.querySelector("#toggle-solution").textContent = "Show solution";
       host.querySelector("#copy-note").textContent = "";
+      if (problem.editor?.kind==="filter") bindFilterEditor(problem.editor);
+    }
+    function bindFilterEditor(editor) {
+      host.querySelector("#image-size").addEventListener("change",generate);
+      host.querySelector("#kernel-size").addEventListener("change",generate);
+      host.querySelector("#recalculate-filter").addEventListener("click",()=>{
+        const image = readEditableMatrix("image",editor.image.length);
+        const kernel = readEditableMatrix("kernel",editor.kernel.length);
+        if (!image || !kernel) {
+          host.querySelector("#manual-status").textContent = "Enter a number in every image and kernel cell.";
+          return;
+        }
+        const solution = host.querySelector(".solution");
+        solution.innerHTML = `<h4>Worked solution</h4>${filterSolutionHTML(image,kernel)}`;
+        solution.hidden = false;
+        host.querySelector("#toggle-solution").textContent = "Hide solution";
+        host.querySelector("#manual-status").textContent = "Solution recalculated from your manual inputs.";
+      });
+      host.querySelectorAll(".editable-matrix input").forEach(input=>input.addEventListener("input",()=>{
+        host.querySelector("#manual-status").textContent = "Inputs changed. Recalculate to update the solution.";
+      }));
+    }
+    function readEditableMatrix(kind,size) {
+      const values = [...host.querySelectorAll(`[data-matrix="${kind}"] input`)].map(input=>input.value.trim()===""?NaN:Number(input.value));
+      if (values.length!==size*size || values.some(value=>!Number.isFinite(value))) return null;
+      return Array.from({length:size},(_,row)=>values.slice(row*size,(row+1)*size));
     }
     function toggleSolution() {
       const solution = host.querySelector(".solution");
@@ -128,12 +162,12 @@
     }
   }
 
-  function generateProblem(lecture,type,rng) {
+  function generateProblem(lecture,type,rng,options={}) {
     if (lecture===1) return generateLN1(type,rng);
     if (lecture===2) return generateLN2(type,rng);
     if (lecture===3) return generateLN3(type,rng);
     if (lecture===4) return generateLN4(type,rng);
-    return generateLN5(type,rng);
+    return generateLN5(type,rng,options);
   }
 
   function generateLN1(type,rng) {
@@ -203,8 +237,42 @@
     const reflectC=i=>i<0?-i-1:i>=w?2*w-i-1:i;
     return image[reflect(r)][reflectC(c)];
   }
-  function cornerResponse(image,kernel,mode){let sum=0;for(let r=0;r<3;r++)for(let c=0;c<3;c++)sum+=sample(image,r-1,c-1,mode)*kernel[r][c];return sum;}
-  function generateLN5(type,rng) {
+  function filterNeighborhood(image,kernel,mode){
+    const anchor=Math.floor(kernel.length/2);
+    const patch=kernel.map((row,r)=>row.map((_,c)=>sample(image,r-anchor,c-anchor,mode)));
+    const response=patch.reduce((sum,row,r)=>sum+row.reduce((rowSum,value,c)=>rowSum+value*kernel[r][c],0),0);
+    return {patch,response};
+  }
+  function filterSolutionHTML(image,kernel){
+    const modes=["zero","symmetric","circular"];
+    const results=modes.map(mode=>[mode,filterNeighborhood(image,kernel,mode)]);
+    return `<p>Cross-correlation uses the kernel without flipping it. For this ${kernel.length} × ${kernel.length} kernel, the anchor index is ${Math.floor(kernel.length/2)}.</p><div class="padding-results">${results.map(([mode,result])=>`<section><h5>${mode[0].toUpperCase()+mode.slice(1)} padding</h5><p>Top-left neighborhood:</p>${matrixHTML(result.patch)}<p>Response = <strong>${fmt(result.response)}</strong></p></section>`).join("")}</div><p>The interior response is independent of padding; boundary responses differ because each mode supplies different values outside the image.</p>`;
+  }
+  function binomialRow(size){
+    const row=[1];
+    for(let k=1;k<size;k++)row.push(row[k-1]*(size-k)/k);
+    return row;
+  }
+  function makeFilterKernel(name,size){
+    if(name==="mean")return Array.from({length:size},()=>Array(size).fill(1/(size*size)));
+    if(name==="Gaussian"){
+      const row=binomialRow(size),normalizer=row.reduce((sum,value)=>sum+value,0)**2;
+      return row.map(y=>row.map(x=>x*y/normalizer));
+    }
+    const kernel=Array.from({length:size},()=>Array(size).fill(0)),anchor=Math.floor(size/2);
+    kernel[anchor][Math.max(0,anchor-1)]=-1;
+    kernel[anchor][Math.min(size-1,anchor+1)]=1;
+    return kernel;
+  }
+  function editableMatrixHTML(matrix,kind,label){
+    return `<div class="matrix-editor-scroll"><div class="editable-matrix" data-matrix="${kind}" style="--cols:${matrix.length}" role="group" aria-label="${esc(label)}">${matrix.flatMap((row,r)=>row.map((value,c)=>`<input type="number" step="any" value="${inputFmt(value)}" aria-label="${esc(label)} row ${r+1}, column ${c+1}">`)).join("")}</div></div>`;
+  }
+  function filterEditorHTML(image,kernel,name){
+    const imageSizes=Array.from({length:7},(_,index)=>index+4);
+    const kernelSizes=[3,4,5];
+    return `<div class="manual-editor"><div class="manual-editor-heading"><div><h4>Manual filter inputs</h4><p>The seed creates the starting values. Change a size to rebuild from that seed, or edit any cell directly.</p></div><span class="input-mode">Editable</span></div><div class="dimension-controls"><label>Image size<select id="image-size">${imageSizes.map(size=>`<option value="${size}" ${size===image.length?"selected":""}>${size} × ${size}</option>`).join("")}</select></label><label>Kernel size<select id="kernel-size">${kernelSizes.map(size=>`<option value="${size}" ${size===kernel.length?"selected":""}>${size} × ${size}</option>`).join("")}</select></label><div class="generated-kernel"><span>Seeded kernel</span><strong>${esc(name)}</strong></div></div><div class="matrix-editor-layout"><fieldset><legend>Image values</legend>${editableMatrixHTML(image,"image","Image")}</fieldset><fieldset><legend>Kernel values</legend>${editableMatrixHTML(kernel,"kernel","Kernel")}</fieldset></div><div class="manual-actions"><button class="button button-primary" id="recalculate-filter">Recalculate solution</button><p id="manual-status" aria-live="polite">Manual edits stay in this browser; the variant link preserves the seed and dimensions.</p></div></div>`;
+  }
+  function generateLN5(type,rng,options={}) {
     if(type==="median"){
       const base=int(rng,8,20),outlier=pick(rng,[0,255]), vals=Array.from({length:9},()=>base+int(rng,-2,2));vals[4]=outlier;const sorted=[...vals].sort((a,b)=>a-b),median=sorted[4],mean=vals.reduce((a,b)=>a+b,0)/9;
       return {level:"Robust filtering",title:"Median versus mean with an outlier",question:`<p>Calculate the median and mean of this 3 × 3 neighborhood. Which result better represents the local background?</p>${matrixHTML([vals.slice(0,3),vals.slice(3,6),vals.slice(6,9)])}`,solution:`<p>Sorted values: ${sorted.join(", ")}.</p><p>Median = <strong>${median}</strong>. Mean = ${vals.reduce((a,b)=>a+b,0)}/9 = <strong>${fmt(mean)}</strong>. The median is more representative because the isolated ${outlier} has little effect on the ordered middle value.</p>`};
@@ -213,13 +281,11 @@
       const left=int(rng,5,30),right=left+pick(rng,[20,30,40,50]),top=int(rng,5,30),bottom=top+pick(rng,[10,20,30]); const dx=right-left,dy=bottom-top,mag=Math.hypot(dx,dy),threshold=pick(rng,[25,40,50,60]);
       return {level:"Edge calculation",title:"Derivative and gradient magnitude",question:`<p>At one pixel, Dx sees [${left}, ${left}, ${right}] with kernel [−1,0,1]. Dy sees [${top}, ${top}, ${bottom}]ᵀ. Calculate Dx, Dy, and gradient magnitude. Is it an edge for threshold ${threshold}?</p>`,solution:`<p>Dx=−${left}+${right}=<strong>${dx}</strong>. Dy=−${top}+${bottom}=<strong>${dy}</strong>. Magnitude=√(${dx}²+${dy}²)=<strong>${fmt(mag)}</strong>. Therefore it ${mag>=threshold?"is":"is not"} an edge at threshold ${threshold}.</p>`};
     }
-    const start=int(rng,1,5)*10; const image=Array.from({length:4},(_,r)=>Array.from({length:4},(_,c)=>start+10*(4*r+c)));
-    const filters=[
-      ["mean",Array.from({length:3},()=>Array(3).fill(1/9))],
-      ["Gaussian",[[1/16,2/16,1/16],[2/16,4/16,2/16],[1/16,2/16,1/16]]],
-      ["horizontal derivative",[[0,0,0],[-1,0,1],[0,0,0]]]
-    ];
-    const [name,kernel]=pick(rng,filters); const modes=["zero","symmetric","circular"]; const values=modes.map(m=>cornerResponse(image,kernel,m));
-    return {level:"Boundary handling",title:`${name[0].toUpperCase()+name.slice(1)} filter with three padding modes`,question:`<p>Apply the kernel to the top-left pixel using zero, symmetric, and circular padding. Show the three neighborhoods and compare the outputs.</p><p>Image:</p>${matrixHTML(image)}<p>Kernel:</p>${matrixHTML(kernel)}`,solution:`<ol>${modes.map((m,i)=>`<li><strong>${m} padding:</strong> output = ${fmt(values[i])}</li>`).join("")}</ol><p>The values differ because each mode supplies different samples outside the image. Interior pixels use only real image values and therefore do not depend on padding.</p>`};
+    const imageSize=Math.min(10,Math.max(4,Number(options.imageSize)||4));
+    const kernelSize=[3,4,5].includes(Number(options.kernelSize))?Number(options.kernelSize):3;
+    const image=Array.from({length:imageSize},()=>Array.from({length:imageSize},()=>int(rng,1,24)*10));
+    const name=pick(rng,["mean","Gaussian","horizontal derivative"]);
+    const kernel=makeFilterKernel(name,kernelSize);
+    return {level:"Boundary handling",title:`${name[0].toUpperCase()+name.slice(1)} filter with three padding modes`,question:`<p>Apply cross-correlation at the top-left pixel using zero, symmetric, and circular padding. Edit the values or dimensions, then compare the three neighborhoods and outputs.</p>${filterEditorHTML(image,kernel,name)}`,solution:filterSolutionHTML(image,kernel),editor:{kind:"filter",image,kernel}};
   }
 })();

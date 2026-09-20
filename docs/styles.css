@@ -126,6 +126,27 @@ input, select { min-height: 42px; padding: 8px 10px; color: var(--ink); backgrou
 .solution h4 { margin: 0 0 8px; color: var(--teal); }
 .solution ol { padding-left: 22px; }
 .copy-note { min-height: 22px; color: var(--teal); font-size: .86rem; }
+.manual-editor { margin: 22px 0 18px; padding: 20px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.manual-editor-heading { margin-bottom: 16px; display: flex; align-items: start; justify-content: space-between; gap: 24px; }
+.manual-editor-heading h4 { margin: 0 0 4px; font-size: 1.05rem; }
+.manual-editor-heading p { margin: 0; color: var(--muted); }
+.input-mode { color: var(--teal); font-size: .78rem; font-weight: 800; text-transform: uppercase; }
+.dimension-controls { display: grid; grid-template-columns: minmax(140px,200px) minmax(140px,200px) minmax(160px,1fr); gap: 12px; align-items: end; }
+.generated-kernel { min-height: 42px; padding: 7px 0; display: grid; align-content: center; }
+.generated-kernel span { color: var(--muted); font-size: .75rem; font-weight: 700; }
+.generated-kernel strong { font-size: .92rem; }
+.matrix-editor-layout { margin-top: 18px; display: grid; grid-template-columns: minmax(0,1.2fr) minmax(380px,.8fr); gap: 22px; align-items: start; }
+.matrix-editor-layout fieldset { min-width: 0; margin: 0; padding: 12px 0 0; border: 0; border-top: 2px solid var(--navy); }
+.matrix-editor-layout legend { padding: 0 10px 0 0; color: var(--navy); font-size: .85rem; font-weight: 800; }
+.matrix-editor-scroll { max-width: 100%; overflow-x: auto; padding: 6px 2px 10px; }
+.editable-matrix { width: max-content; display: grid; grid-template-columns: repeat(var(--cols),70px); gap: 5px; }
+.editable-matrix input { width: 70px; min-height: 37px; padding: 5px 6px; text-align: right; font: 600 .84rem/1.2 "Cambria Math", Consolas, monospace; }
+.manual-actions { margin-top: 16px; display: flex; align-items: center; gap: 16px; }
+.manual-actions p { margin: 0; color: var(--muted); font-size: .84rem; }
+.padding-results { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 22px; }
+.padding-results section { min-width: 0; padding-top: 10px; border-top: 1px solid var(--line); overflow-x: auto; }
+.padding-results h5 { margin: 0; font-size: .95rem; }
+.padding-results section > p { margin: 5px 0; color: var(--muted); font-size: .86rem; }
 
 @media (max-width: 920px) {
   .lecture-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
@@ -134,6 +155,7 @@ input, select { min-height: 42px; padding: 8px 10px; color: var(--ink); backgrou
   .lecture-sidebar { min-height: 0; position: static; }
   .lecture-sidebar nav { grid-template-columns: repeat(3,1fr); gap: 0 15px; }
   .workflow { grid-template-columns: repeat(2,1fr); }
+  .matrix-editor-layout, .padding-results { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
   .site-header { padding: 12px 18px; align-items: flex-start; }
@@ -146,6 +168,9 @@ input, select { min-height: 42px; padding: 8px 10px; color: var(--ink); backgrou
   .lecture-sidebar nav { grid-template-columns: repeat(2,1fr); }
   .lecture-hero, .lecture-main { padding-left: 20px; padding-right: 20px; }
   .generator-controls { grid-template-columns: 1fr; }
+  .dimension-controls { grid-template-columns: 1fr 1fr; }
+  .generated-kernel { grid-column: 1 / -1; }
+  .manual-actions { align-items: flex-start; flex-direction: column; }
   .resource-list a, .notebook-item { grid-template-columns: 1fr; }
   footer { align-items: flex-start; flex-direction: column; justify-content: center; }
 }
