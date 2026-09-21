@@ -111,6 +111,8 @@ footer { min-height: 64px; padding: 0 5vw; display: flex; align-items: center; j
 .quiz-option.correct { color: #075d48; background: #e5f5ef; border-color: #58a98f; }
 .quiz-option.incorrect { color: #8a2530; background: #fbeaec; border-color: #cf7c85; }
 .quiz-feedback { min-height: 28px; margin: 14px 0 0; font-weight: 650; }
+.true-false-options { display: grid; grid-template-columns: repeat(2,minmax(120px,180px)); gap: 10px; }
+.true-false-options .quiz-option { text-align: center; font-weight: 800; }
 
 .generator-controls { padding: 18px; display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: end; background: var(--surface); border: 1px solid var(--line); border-radius: 6px 6px 0 0; }
 label { display: grid; gap: 5px; color: var(--muted); font-size: .84rem; font-weight: 700; }
@@ -174,6 +176,7 @@ input, select { min-height: 42px; padding: 8px 10px; color: var(--ink); backgrou
   .lecture-sidebar nav { grid-template-columns: repeat(2,1fr); }
   .lecture-hero, .lecture-main { padding-left: 20px; padding-right: 20px; }
   .generator-controls { grid-template-columns: 1fr; }
+  .true-false-options { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .dimension-controls { grid-template-columns: 1fr; }
   .bank-field-grid { grid-template-columns: 1fr; }
   .bank-matrix-field { grid-column: 1; }

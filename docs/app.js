@@ -25,7 +25,7 @@
       <aside class="lecture-sidebar">
         <a class="back-link" href="index.html">Back to course</a>
         <strong>LN${ln} ${esc(data.short)}</strong>
-        <nav><a href="#overview">Overview</a><a href="#concepts">Key concepts</a><a href="#hands-on">Hands-on</a><a href="#notebooks">Colab notebooks</a><a href="#knowledge-check">Interactive MCQs</a><a href="#problem-lab">Problem generator</a></nav>
+        <nav><a href="#overview">Overview</a><a href="#concepts">Key concepts</a><a href="#hands-on">Hands-on</a><a href="#notebooks">Colab notebooks</a><a href="#knowledge-check">Interactive MCQs</a><a href="#true-false">True or False</a><a href="#problem-lab">Problem generator</a></nav>
       </aside>
       <main class="lecture-content">
         <section class="lecture-hero" id="overview">
@@ -38,6 +38,7 @@
           <section class="lecture-section" id="hands-on"><p class="eyebrow">Hands-on material</p><h2>From theory to evidence</h2><div class="workflow">${data.handsOn.map((x,i)=>`<div><span>0${i+1}</span><h3>${esc(x[0])}</h3><p>${esc(x[1])}</p></div>`).join("")}</div></section>
           <section class="lecture-section" id="notebooks"><p class="eyebrow">Colab</p><h2>Run the notebooks</h2><div class="notebook-list">${data.notebooks.map(x=>`<div class="notebook-item"><div><strong>${esc(x[0])}</strong><p>${esc(x[1])}</p></div><div class="button-row"><a class="button button-primary" target="_blank" rel="noopener" href="${notebookUrl(x[2])}">Open in Colab</a><a class="button button-secondary" href="notebooks/${encodeURIComponent(x[2])}">Download</a></div></div>`).join("")}</div></section>
           <section class="lecture-section" id="knowledge-check"><p class="eyebrow">Self-check</p><h2>Interactive MCQs</h2><div id="quiz"></div></section>
+          <section class="lecture-section" id="true-false"><p class="eyebrow">Concept check</p><h2>Interactive True or False</h2><p>Answer all 10 statements for this lecture note. Feedback explains why each statement is true or false.</p><div id="true-false-quiz"></div></section>
           <section class="lecture-section" id="problem-lab"><p class="eyebrow">Exam practice</p><h2>Parameterized problem generator</h2><p>Across the five lecture pages, the generator includes all 43 numbered problems in the LN1-LN5 bank. A seed creates reproducible starting values; every displayed scalar, vector, matrix, and scenario input can then be changed manually before recalculating the worked solution.</p><div id="generator"></div></section>
         </div>
       </main>
@@ -45,6 +46,7 @@
     <footer><span>CSBP441 Applied Computer Vision</span><span>LN${ln} ${esc(data.short)}</span></footer>`;
 
   initQuiz();
+  initTrueFalse();
   initGenerator();
 
   function initQuiz() {
@@ -78,6 +80,45 @@
     function next() {
       if (index === data.mcqs.length-1) { index=0; score=0; } else index += 1;
       answered = false;
+      render();
+    }
+    render();
+  }
+
+  function initTrueFalse() {
+    const host = document.getElementById("true-false-quiz");
+    const items = data.trueFalse || [];
+    if (!host || !items.length) return;
+    let index = 0;
+    let score = 0;
+    let answered = false;
+
+    function render() {
+      const item = items[index];
+      host.innerHTML = `<div class="quiz-status"><span>Statement ${index+1} of ${items.length}</span><span>Score ${score}/${items.length}</span></div><div class="quiz-question true-false-question"><h3>${esc(item.q)}</h3><div class="true-false-options"><button class="quiz-option" data-answer="true">True</button><button class="quiz-option" data-answer="false">False</button></div><p class="quiz-feedback" aria-live="polite"></p><div class="button-row"><button class="button button-secondary" id="tf-next" disabled>${index===items.length-1?"Restart true or false":"Next statement"}</button></div></div>`;
+      host.querySelectorAll(".quiz-option").forEach(button=>button.addEventListener("click",()=>answer(button.dataset.answer==="true")));
+      host.querySelector("#tf-next").addEventListener("click",next);
+    }
+
+    function answer(choice) {
+      if (answered) return;
+      answered = true;
+      const item = items[index];
+      if (choice === item.answer) score += 1;
+      host.querySelectorAll(".quiz-option").forEach(button=>{
+        const value=button.dataset.answer==="true";
+        button.disabled=true;
+        if(value===item.answer)button.classList.add("correct");
+        else if(value===choice)button.classList.add("incorrect");
+      });
+      host.querySelector(".quiz-feedback").textContent=`${choice===item.answer?"Correct.":"Not quite."} ${item.why}`;
+      host.querySelector("#tf-next").disabled=false;
+      host.querySelector(".quiz-status span:last-child").textContent=`Score ${score}/${items.length}`;
+    }
+
+    function next() {
+      if(index===items.length-1){index=0;score=0;}else index+=1;
+      answered=false;
       render();
     }
     render();
@@ -123,7 +164,8 @@
         query.set("kernelSize",String(kernelSize));
         query.set("filterType",problem.editor.filterType);
       }
-      history.replaceState(null,"",`${location.pathname}?${query}#problem-lab`);
+      const sectionHash=location.hash || "#problem-lab";
+      history.replaceState(null,"",`${location.pathname}?${query}${sectionHash}`);
       const bankEditor = problem.editor?.kind==="bank" ? bankEditorHTML(problem.editor) : "";
       host.querySelector("#problem").innerHTML = `<div class="problem-meta"><span>LN${ln}</span><span>Seed ${esc(seed)}</span><span>${esc(problem.level)}</span></div><h3>${esc(problem.title)}</h3><div class="problem-body"><div class="dynamic-question">${problem.question}</div>${bankEditor}</div><div class="solution" hidden><h4>Worked solution</h4>${problem.solution}</div>`;
       host.querySelector("#toggle-solution").textContent = "Show solution";
