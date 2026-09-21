@@ -91,7 +91,7 @@ footer { min-height: 64px; padding: 0 5vw; display: flex; align-items: center; j
 .attendance-tab.is-active { color: var(--navy); border-bottom-color: var(--teal); }
 .attendance-panel { padding-top: 28px; }
 .attendance-panel[hidden] { display: none; }
-.attendance-layout { display: grid; grid-template-columns: minmax(0,1fr) 280px; gap: 32px; align-items: start; }
+.attendance-layout { display: grid; grid-template-columns: minmax(0,1fr); gap: 24px; align-items: start; }
 .attendance-workspace { display: grid; gap: 18px; }
 .tool-section { padding: 25px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
 .tool-section-heading { margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 22px; }
@@ -140,10 +140,10 @@ tbody tr:last-child td { border-bottom: 0; }
 .empty-table { height: 80px; color: var(--muted); text-align: center; }
 .attendance-state { color: var(--muted); }
 .attendance-state.is-present { color: #08705b; font-weight: 800; }
-.flow-guide { padding: 24px; color: #fff; background: #162d43; position: sticky; top: 92px; }
+.flow-guide { padding: 24px; color: #fff; background: #162d43; position: static; }
 .flow-guide .eyebrow { color: #67d3c7; }
 .flow-guide h2 { font-size: 1.5rem; }
-.flow-guide ol { margin: 0; padding: 0; list-style: none; counter-reset: flow; }
+.flow-guide ol { margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 0 24px; list-style: none; counter-reset: flow; }
 .flow-guide li { padding: 15px 0; display: grid; gap: 4px; border-top: 1px solid rgba(255,255,255,.14); counter-increment: flow; }
 .flow-guide li strong::before { content: counter(flow) ". "; color: #67d3c7; }
 .flow-guide li span { color: #c9d7e3; font-size: .85rem; }
@@ -275,6 +275,7 @@ input, select { min-height: 42px; padding: 8px 10px; color: var(--ink); backgrou
   .student-qr img, .student-qr canvas { width: 220px !important; height: 220px !important; }
   .student-preview { grid-template-columns: 1fr; justify-items: center; gap: 36px; }
   .student-explanation { max-width: 580px; }
+  .flow-guide ol { grid-template-columns: repeat(2,minmax(0,1fr)); }
 }
 @media (max-width: 640px) {
   .site-header { padding: 12px 18px; align-items: flex-start; }
@@ -309,6 +310,7 @@ input, select { min-height: 42px; padding: 8px 10px; color: var(--ink); backgrou
   .student-qr { width: 240px !important; height: 240px !important; }
   .student-qr img, .student-qr canvas { width: 220px !important; height: 220px !important; }
   .light-text-button { justify-self: center; }
+  .flow-guide ol { grid-template-columns: 1fr; }
   .validation-summary { display: grid; gap: 5px; }
   .session-facts div { padding: 8px 0 0; border-top: 1px solid #52718c; border-left: 0; }
   .attendance-metrics div { padding: 10px; align-items: flex-start; flex-direction: column; }
