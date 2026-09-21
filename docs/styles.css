@@ -248,6 +248,13 @@ input, select { min-height: 42px; padding: 8px 10px; color: var(--ink); backgrou
 .padding-case-content p { margin: 5px 0; color: var(--muted); font-size: .86rem; }
 .full-filter-output { min-width: 0; overflow-x: auto; }
 
+@media (max-width: 1200px) {
+  .attendance-layout { grid-template-columns: 1fr; }
+  .flow-guide { position: static; }
+  .live-session { grid-template-columns: minmax(210px,.55fr) minmax(430px,1.45fr); }
+  .session-facts { grid-column: 1 / -1; }
+}
+
 @media (max-width: 920px) {
   .lecture-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .course-overview, .lecture-hero { grid-template-columns: 1fr; }
