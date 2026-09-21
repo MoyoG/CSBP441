@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="CSBP441 attendance roster and classroom check-in demonstration.">
+  <title>Attendance | CSBP441</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="styles.css?v=20260921d">
+</head>
+<body class="attendance-page">
+  <header class="site-header">
+    <a class="course-mark" href="index.html" aria-label="CSBP441 home">
+      <span class="course-code">CSBP441</span>
+      <span>Applied Computer Vision</span>
+    </a>
+    <nav class="top-nav" aria-label="Course navigation">
+      <a href="index.html">Course home</a>
+      <a href="attendance.html" aria-current="page">Attendance</a>
+    </nav>
+  </header>
+
+  <main class="attendance-shell">
+    <section class="attendance-heading">
+      <div>
+        <p class="eyebrow">Classroom tool prototype</p>
+        <h1>Attendance</h1>
+        <p class="lede">Upload a roster, open a timed session, and test a student check-in before connecting UAEU Single Sign-On.</p>
+      </div>
+      <div class="prototype-notice" role="note">
+        <strong>Browser-only demonstration</strong>
+        <span>No file is uploaded to a server. Production use requires UAEU SSO and a protected attendance API.</span>
+      </div>
+    </section>
+
+    <div class="attendance-tabs" role="tablist" aria-label="Attendance view">
+      <button class="attendance-tab is-active" role="tab" aria-selected="true" aria-controls="instructor-panel" id="instructor-tab" data-panel="instructor-panel">Instructor</button>
+      <button class="attendance-tab" role="tab" aria-selected="false" aria-controls="student-panel" id="student-tab" data-panel="student-panel">Student phone preview</button>
+    </div>
+
+    <section class="attendance-panel" id="instructor-panel" role="tabpanel" aria-labelledby="instructor-tab">
+      <div class="attendance-layout">
+        <div class="attendance-workspace">
+          <section class="tool-section" aria-labelledby="roster-title">
+            <div class="tool-section-heading">
+              <div><span class="step-number">1</span><h2 id="roster-title">Load a class roster</h2></div>
+              <span class="status-chip" id="roster-chip">No roster</span>
+            </div>
+            <p class="section-intro">Supports the Blackboard UTF-16 tab-separated <code>.xls</code> export, plus <code>.csv</code> and <code>.tsv</code> files. Grade columns are ignored.</p>
+            <div class="roster-controls">
+              <label>Class or section
+                <input id="class-name" value="CSBP441-21086" maxlength="60">
+              </label>
+              <label class="file-control">Roster file
+                <input id="roster-file" type="file" accept=".xls,.csv,.tsv,.txt">
+              </label>
+              <button class="button button-secondary" id="demo-roster" type="button">Use fictional roster</button>
+            </div>
+            <p class="form-status" id="roster-status" aria-live="polite">Choose your roster export or load the fictional roster for a quick demonstration.</p>
+            <div class="validation-summary" id="validation-summary" hidden></div>
+            <div class="table-scroll roster-preview" id="roster-preview" hidden>
+              <table>
+                <thead><tr><th>Student ID</th><th>Username</th><th>Name</th><th>Available</th></tr></thead>
+                <tbody id="roster-body"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="tool-section" aria-labelledby="session-title">
+            <div class="tool-section-heading">
+              <div><span class="step-number">2</span><h2 id="session-title">Open attendance</h2></div>
+              <span class="status-chip" id="session-chip">Closed</span>
+            </div>
+            <div class="session-controls">
+              <label>Session label
+                <input id="session-label" value="Week 5 lecture" maxlength="80">
+              </label>
+              <label>Open for
+                <select id="session-duration">
+                  <option value="3">3 minutes</option>
+                  <option value="5" selected>5 minutes</option>
+                  <option value="10">10 minutes</option>
+                  <option value="15">15 minutes</option>
+                </select>
+              </label>
+              <button class="button button-primary" id="start-session" type="button">Start session</button>
+              <button class="button button-danger" id="close-session" type="button" disabled>Close</button>
+            </div>
+            <div class="live-session" id="live-session" hidden>
+              <div class="code-display">
+                <span>Current classroom code</span>
+                <strong id="session-code">------</strong>
+                <small>Changes every 60 seconds</small>
+              </div>
+              <dl class="session-facts">
+                <div><dt>Time remaining</dt><dd id="time-remaining">--:--</dd></div>
+                <div><dt>Checked in</dt><dd id="checked-in-count">0 / 0</dd></div>
+                <div><dt>Next code</dt><dd id="code-remaining">-- s</dd></div>
+              </dl>
+            </div>
+          </section>
+
+          <section class="tool-section" aria-labelledby="results-title">
+            <div class="tool-section-heading">
+              <div><span class="step-number">3</span><h2 id="results-title">Review attendance</h2></div>
+              <div class="button-row">
+                <button class="button button-secondary" id="export-attendance" type="button" disabled>Export CSV</button>
+                <button class="button button-danger" id="clear-demo" type="button">Clear</button>
+              </div>
+            </div>
+            <div class="attendance-metrics" aria-label="Attendance totals">
+              <div><span>Present</span><strong id="metric-present">0</strong></div>
+              <div><span>Absent</span><strong id="metric-absent">0</strong></div>
+              <div><span>Roster</span><strong id="metric-roster">0</strong></div>
+            </div>
+            <div class="table-scroll attendance-results">
+              <table>
+                <thead><tr><th>Student</th><th>Student ID</th><th>Status</th><th>Check-in time</th></tr></thead>
+                <tbody id="attendance-body"><tr><td colspan="4" class="empty-table">Load a roster to begin.</td></tr></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <aside class="flow-guide" aria-labelledby="flow-title">
+          <p class="eyebrow">What this tests</p>
+          <h2 id="flow-title">Secure flow</h2>
+          <ol>
+            <li><strong>Identity</strong><span>UAEU SSO verifies the account in production.</span></li>
+            <li><strong>Enrollment</strong><span>The verified username or student ID must exist in the uploaded roster.</span></li>
+            <li><strong>Presence</strong><span>The student enters the rotating code visible in the room.</span></li>
+            <li><strong>Uniqueness</strong><span>Only one check-in is accepted per student and session.</span></li>
+          </ol>
+          <div class="privacy-note">
+            <strong>Not stored by this demo</strong>
+            <p>Passwords, UAEU tokens, GPS position, device identifiers, and uploaded files.</p>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="attendance-panel student-preview" id="student-panel" role="tabpanel" aria-labelledby="student-tab" hidden>
+      <div class="phone-frame">
+        <div class="phone-status"><span>CSBP441</span><span id="phone-time">--:--</span></div>
+        <div class="phone-content">
+          <p class="eyebrow">UAEU classroom check-in</p>
+          <h2 id="student-session-name">Attendance is closed</h2>
+          <div class="identity-state" id="identity-state">
+            <span class="identity-mark">ID</span>
+            <div><strong>UAEU login simulation</strong><p>Production replaces this field with the verified UAEU account.</p></div>
+          </div>
+          <form id="checkin-form">
+            <label>UAEU username or student ID
+              <input id="student-identity" inputmode="numeric" autocomplete="username" required placeholder="Example: 20260001">
+            </label>
+            <label>Classroom code
+              <input id="student-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required placeholder="6-digit code">
+            </label>
+            <button class="button button-primary student-submit" type="submit">Check in</button>
+          </form>
+          <div class="checkin-result" id="checkin-result" aria-live="polite"></div>
+          <button class="text-button" type="button" id="return-instructor">Return to instructor view</button>
+        </div>
+      </div>
+      <div class="student-explanation">
+        <p class="eyebrow">Try the workflow</p>
+        <h2>Act as a student</h2>
+        <p>Use a username or student ID from the roster preview, then enter the classroom code. The page tests enrollment, session timing, the rotating code, and duplicate prevention.</p>
+        <p>For real phones, the session and roster must live in a secure backend shared by every device. This preview keeps everything inside this one browser.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer><span>CSBP441 Applied Computer Vision</span><span>Attendance prototype</span></footer>
+  <script src="attendance.js?v=20260921d"></script>
+</body>
+</html>
