@@ -116,10 +116,17 @@ table { width: 100%; border-collapse: collapse; font-size: .88rem; }
 th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
 th { color: var(--muted); background: #f2f5f7; font-size: .74rem; text-transform: uppercase; }
 tbody tr:last-child td { border-bottom: 0; }
-.live-session { margin-top: 18px; display: grid; grid-template-columns: minmax(250px,.8fr) minmax(0,1.2fr); gap: 30px; align-items: center; padding: 22px; color: #fff; background: #173a5e; border-radius: 5px; }
+.live-session { margin-top: 18px; display: grid; grid-template-columns: minmax(210px,.6fr) minmax(290px,1fr) minmax(250px,.8fr); gap: 26px; align-items: center; padding: 22px; color: #fff; background: #173a5e; border-radius: 5px; }
 .code-display { display: grid; }
 .code-display span, .code-display small { color: #bcd0df; }
 .code-display strong { margin: 3px 0; font: 800 2.8rem/1.1 Consolas, monospace; letter-spacing: .12em; }
+.qr-display { display: grid; grid-template-columns: 132px minmax(140px,1fr); gap: 15px; align-items: center; }
+.student-qr { width: 132px; height: 132px; display: grid; place-items: center; background: #fff; }
+.student-qr img, .student-qr canvas { width: 132px !important; height: 132px !important; }
+.qr-display > div:last-child { display: grid; align-content: center; gap: 5px; }
+.qr-display span { color: #bcd0df; font-size: .78rem; }
+.qr-fallback { padding: 8px; color: var(--muted) !important; text-align: center; }
+.light-text-button { margin: 3px 0 0; padding: 0; justify-self: start; color: #fff; font-size: .78rem; }
 .session-facts { margin: 0; display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; }
 .session-facts div { padding-left: 14px; border-left: 1px solid #52718c; }
 .session-facts dt { color: #bcd0df; font-size: .75rem; }
@@ -253,6 +260,8 @@ input, select { min-height: 42px; padding: 8px 10px; color: var(--ink); backgrou
   .flow-guide { position: static; }
   .roster-controls { grid-template-columns: 1fr 1fr; }
   .session-controls { grid-template-columns: 1fr 1fr; }
+  .live-session { grid-template-columns: 1fr 1fr; }
+  .session-facts { grid-column: 1 / -1; }
   .student-preview { grid-template-columns: 1fr; justify-items: center; gap: 36px; }
   .student-explanation { max-width: 580px; }
 }
@@ -284,6 +293,9 @@ input, select { min-height: 42px; padding: 8px 10px; color: var(--ink); backgrou
   .tool-section-heading .button-row { justify-content: flex-end; }
   .section-intro { margin-left: 0; }
   .roster-controls, .session-controls, .live-session, .session-facts { grid-template-columns: 1fr; }
+  .session-facts { grid-column: auto; }
+  .qr-display { grid-template-columns: 112px 1fr; }
+  .student-qr, .student-qr img, .student-qr canvas { width: 112px !important; height: 112px !important; }
   .validation-summary { display: grid; gap: 5px; }
   .session-facts div { padding: 8px 0 0; border-top: 1px solid #52718c; border-left: 0; }
   .attendance-metrics div { padding: 10px; align-items: flex-start; flex-direction: column; }

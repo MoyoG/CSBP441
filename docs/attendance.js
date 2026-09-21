@@ -21,9 +21,11 @@
   $("#checkin-form").addEventListener("submit", checkIn);
   $("#export-attendance").addEventListener("click", exportAttendance);
   $("#clear-demo").addEventListener("click", clearDemo);
+  $("#copy-student-link").addEventListener("click", copyStudentLink);
 
   updatePhoneTime();
   setInterval(updatePhoneTime, 15000);
+  if (new URLSearchParams(location.search).get("view") === "student") showPanel("student-panel");
 
   function showPanel(panelId) {
     $$(".attendance-tab").forEach(tab => {
@@ -186,6 +188,7 @@
     $("#checkin-result").className = "checkin-result";
     $("#checkin-result").textContent = "";
     clearInterval(state.timer);
+    renderStudentQR();
     tick();
     state.timer = setInterval(tick, 1000);
     renderAttendance();
@@ -206,6 +209,39 @@
     if (!state.session) return "";
     const interval = Math.floor(Date.now() / 60000);
     return String(hash(`${state.session.secret}:${interval}`) % 1000000).padStart(6, "0");
+  }
+
+  function studentPageURL() {
+    const url = new URL("attendance.html", location.href);
+    url.searchParams.set("view", "student");
+    return url.href;
+  }
+
+  function renderStudentQR() {
+    const host = $("#student-qr");
+    host.innerHTML = "";
+    if (typeof QRCode === "undefined") {
+      host.innerHTML = '<span class="qr-fallback">QR unavailable</span>';
+      return;
+    }
+    new QRCode(host, {
+      text: studentPageURL(),
+      width: 132,
+      height: 132,
+      colorDark: "#17202a",
+      colorLight: "#ffffff",
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  }
+
+  async function copyStudentLink() {
+    try {
+      await navigator.clipboard.writeText(studentPageURL());
+      $("#copy-student-link").textContent = "Link copied";
+      setTimeout(() => { $("#copy-student-link").textContent = "Copy student link"; }, 1800);
+    } catch {
+      $("#copy-student-link").textContent = "Use the QR code";
+    }
   }
 
   function hash(value) {

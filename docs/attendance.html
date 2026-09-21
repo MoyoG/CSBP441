@@ -6,7 +6,7 @@
   <meta name="description" content="CSBP441 attendance roster and classroom check-in demonstration.">
   <title>Attendance | CSBP441</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="styles.css?v=20260921d">
+  <link rel="stylesheet" href="styles.css?v=20260921e">
 </head>
 <body class="attendance-page">
   <header class="site-header">
@@ -25,11 +25,11 @@
       <div>
         <p class="eyebrow">Classroom tool prototype</p>
         <h1>Attendance</h1>
-        <p class="lede">Upload a roster, open a timed session, and test a student check-in before connecting UAEU Single Sign-On.</p>
+        <p class="lede">Upload a roster, open a timed session, and let students reach the check-in page by scanning a classroom QR code.</p>
       </div>
       <div class="prototype-notice" role="note">
         <strong>Browser-only demonstration</strong>
-        <span>No file is uploaded to a server. Production use requires UAEU SSO and a protected attendance API.</span>
+        <span>No institutional login is required. Files remain in this browser; registrations need a protected shared API for real multi-phone use.</span>
       </div>
     </section>
 
@@ -92,6 +92,10 @@
                 <strong id="session-code">------</strong>
                 <small>Changes every 60 seconds</small>
               </div>
+              <div class="qr-display">
+                <div id="student-qr" class="student-qr" aria-label="QR code opening the student check-in page"></div>
+                <div><strong>Student check-in page</strong><span>Scan with a phone, then enter the code shown in class.</span><button class="text-button light-text-button" id="copy-student-link" type="button">Copy student link</button></div>
+              </div>
               <dl class="session-facts">
                 <div><dt>Time remaining</dt><dd id="time-remaining">--:--</dd></div>
                 <div><dt>Checked in</dt><dd id="checked-in-count">0 / 0</dd></div>
@@ -126,14 +130,14 @@
           <p class="eyebrow">What this tests</p>
           <h2 id="flow-title">Secure flow</h2>
           <ol>
-            <li><strong>Identity</strong><span>UAEU SSO verifies the account in production.</span></li>
-            <li><strong>Enrollment</strong><span>The verified username or student ID must exist in the uploaded roster.</span></li>
+            <li><strong>Identification</strong><span>The entered student ID or username must exist in the uploaded roster.</span></li>
+            <li><strong>Enrollment</strong><span>The roster determines whether that identifier belongs to this class.</span></li>
             <li><strong>Presence</strong><span>The student enters the rotating code visible in the room.</span></li>
             <li><strong>Uniqueness</strong><span>Only one check-in is accepted per student and session.</span></li>
           </ol>
           <div class="privacy-note">
-            <strong>Not stored by this demo</strong>
-            <p>Passwords, UAEU tokens, GPS position, device identifiers, and uploaded files.</p>
+            <strong>Important limitation</strong>
+            <p>Without institutional login, an entered ID does not prove who is holding the phone. The rotating in-room code reduces remote check-ins but cannot prevent ID sharing.</p>
           </div>
         </aside>
       </div>
@@ -143,14 +147,14 @@
       <div class="phone-frame">
         <div class="phone-status"><span>CSBP441</span><span id="phone-time">--:--</span></div>
         <div class="phone-content">
-          <p class="eyebrow">UAEU classroom check-in</p>
+          <p class="eyebrow">Classroom check-in</p>
           <h2 id="student-session-name">Attendance is closed</h2>
           <div class="identity-state" id="identity-state">
             <span class="identity-mark">ID</span>
-            <div><strong>UAEU login simulation</strong><p>Production replaces this field with the verified UAEU account.</p></div>
+            <div><strong>No login required</strong><p>Your student ID is checked against the instructor's class roster.</p></div>
           </div>
           <form id="checkin-form">
-            <label>UAEU username or student ID
+            <label>Student ID or roster username
               <input id="student-identity" inputmode="numeric" autocomplete="username" required placeholder="Example: 20260001">
             </label>
             <label>Classroom code
@@ -172,6 +176,7 @@
   </main>
 
   <footer><span>CSBP441 Applied Computer Vision</span><span>Attendance prototype</span></footer>
-  <script src="attendance.js?v=20260921d"></script>
+  <script src="vendor/qrcode.min.js"></script>
+  <script src="attendance.js?v=20260921e"></script>
 </body>
 </html>
