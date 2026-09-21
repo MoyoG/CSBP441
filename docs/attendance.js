@@ -7,6 +7,7 @@
     session: null,
     timer: null
   };
+  const ROSTER_STORAGE_KEY = "csbp441-attendance-rosters-v1";
 
   const $ = selector => document.querySelector(selector);
   const $$ = selector => [...document.querySelectorAll(selector)];
@@ -16,6 +17,7 @@
   $("#return-instructor").addEventListener("click", () => showPanel("instructor-panel"));
   $("#demo-roster").addEventListener("click", loadDemoRoster);
   $("#roster-file").addEventListener("change", loadRosterFile);
+  $("#class-select").addEventListener("change", selectSavedClass);
   $("#start-session").addEventListener("click", startSession);
   $("#close-session").addEventListener("click", () => closeSession("Session closed by instructor."));
   $("#checkin-form").addEventListener("submit", checkIn);
@@ -25,7 +27,12 @@
 
   updatePhoneTime();
   setInterval(updatePhoneTime, 15000);
-  if (new URLSearchParams(location.search).get("view") === "student") showPanel("student-panel");
+  refreshClassOptions();
+  restoreLatestRoster();
+  if (new URLSearchParams(location.search).get("view") === "student") {
+    document.body.classList.add("student-only");
+    showPanel("student-panel");
+  }
 
   function showPanel(panelId) {
     $$(".attendance-tab").forEach(tab => {
@@ -48,7 +55,7 @@
         available: "Yes"
       };
     });
-    applyRoster(students, "Fictional roster loaded. Use any displayed ID to test student check-in.");
+    applyRoster(students, "Fictional roster loaded for this demonstration. It did not replace a saved class roster.", {persist: false});
   }
 
   async function loadRosterFile(event) {
@@ -61,7 +68,7 @@
       const delimiter = detectDelimiter(text);
       const records = parseDelimited(text, delimiter);
       const students = mapRoster(records);
-      applyRoster(students, `${file.name} validated in this browser. The original file was not uploaded.`);
+      applyRoster(students, `${file.name} validated. The latest roster for this class is now saved in this browser.`, {persist: true});
     } catch (error) {
       applyRosterError(error.message || "The roster could not be read.");
     } finally {
@@ -141,7 +148,7 @@
     return students;
   }
 
-  function applyRoster(students, message) {
+  function applyRoster(students, message, options = {}) {
     if (state.session) closeSession("Session closed because the roster changed.");
     state.roster = students;
     state.attendance.clear();
@@ -154,7 +161,77 @@
     $("#roster-body").innerHTML = students.map(student => `<tr><td>${escapeHTML(student.studentId)}</td><td>${escapeHTML(student.username)}</td><td>${escapeHTML(student.firstName)} ${escapeHTML(student.lastName)}</td><td>${escapeHTML(student.available || "Yes")}</td></tr>`).join("");
     $("#start-session").disabled = false;
     $("#export-attendance").disabled = false;
+    if (options.persist) persistRoster(students);
+    else if (options.selectedClass) refreshClassOptions(options.selectedClass);
     renderAttendance();
+  }
+
+  function readRosterStore() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(ROSTER_STORAGE_KEY) || "{}");
+      return {classes: parsed.classes && typeof parsed.classes === "object" ? parsed.classes : {}, selected: parsed.selected || ""};
+    } catch {
+      return {classes: {}, selected: ""};
+    }
+  }
+
+  function writeRosterStore(store) {
+    try {
+      localStorage.setItem(ROSTER_STORAGE_KEY, JSON.stringify(store));
+      return true;
+    } catch {
+      $("#roster-status").textContent = "The roster is valid, but this browser blocked local storage. Keep this tab open or allow site storage.";
+      return false;
+    }
+  }
+
+  function persistRoster(students) {
+    const className = $("#class-name").value.trim();
+    if (!className) {
+      $("#roster-status").textContent = "Enter a class or section name before uploading the roster.";
+      return;
+    }
+    const store = readRosterStore();
+    store.classes[className] = {students, uploadedAt: new Date().toISOString()};
+    store.selected = className;
+    if (writeRosterStore(store)) refreshClassOptions(className);
+  }
+
+  function refreshClassOptions(selected = "") {
+    const store = readRosterStore();
+    const classes = Object.entries(store.classes).sort((left, right) => String(right[1].uploadedAt).localeCompare(String(left[1].uploadedAt)));
+    const current = selected || store.selected;
+    $("#class-select").innerHTML = '<option value="">New class</option>' + classes.map(([name, record]) => `<option value="${escapeHTML(name)}" ${name === current ? "selected" : ""}>${escapeHTML(name)} (${record.students.length})</option>`).join("");
+  }
+
+  function restoreLatestRoster() {
+    const store = readRosterStore();
+    const className = store.selected && store.classes[store.selected]
+      ? store.selected
+      : Object.entries(store.classes).sort((left, right) => String(right[1].uploadedAt).localeCompare(String(left[1].uploadedAt)))[0]?.[0];
+    if (className) loadSavedRoster(className);
+  }
+
+  function selectSavedClass() {
+    const className = $("#class-select").value;
+    if (!className) {
+      clearWorkingRoster();
+      $("#class-name").value = "";
+      $("#class-name").focus();
+      return;
+    }
+    loadSavedRoster(className);
+  }
+
+  function loadSavedRoster(className) {
+    const store = readRosterStore();
+    const saved = store.classes[className];
+    if (!saved || !Array.isArray(saved.students)) return;
+    store.selected = className;
+    writeRosterStore(store);
+    $("#class-name").value = className;
+    const savedTime = saved.uploadedAt ? new Intl.DateTimeFormat([], {dateStyle: "medium", timeStyle: "short"}).format(new Date(saved.uploadedAt)) : "an earlier session";
+    applyRoster(saved.students, `Loaded the latest saved roster for ${className}, uploaded ${savedTime}.`, {persist: false, selectedClass: className});
   }
 
   function applyRosterError(message) {
@@ -226,11 +303,11 @@
     }
     new QRCode(host, {
       text: studentPageURL(),
-      width: 132,
-      height: 132,
+      width: 300,
+      height: 300,
       colorDark: "#17202a",
       colorLight: "#ffffff",
-      correctLevel: QRCode.CorrectLevel.M
+      correctLevel: QRCode.CorrectLevel.H
     });
   }
 
@@ -343,19 +420,23 @@
 
   function clearDemo() {
     closeSession();
+    clearWorkingRoster();
+    $("#roster-status").textContent = "The current view was cleared. Saved class rosters remain available in the Saved class menu.";
+    $("#student-identity").value = "";
+    $("#student-code").value = "";
+    $("#checkin-result").textContent = "";
+    renderAttendance();
+  }
+
+  function clearWorkingRoster() {
     state.roster = [];
     state.attendance.clear();
     $("#roster-chip").textContent = "No roster";
     $("#roster-chip").className = "status-chip";
-    $("#roster-status").textContent = "Choose your roster export or load the fictional roster for a quick demonstration.";
     $("#validation-summary").hidden = true;
     $("#roster-preview").hidden = true;
     $("#live-session").hidden = true;
-    $("#start-session").disabled = false;
     $("#export-attendance").disabled = true;
-    $("#student-identity").value = "";
-    $("#student-code").value = "";
-    $("#checkin-result").textContent = "";
     renderAttendance();
   }
 

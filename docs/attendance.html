@@ -29,7 +29,7 @@
       </div>
       <div class="prototype-notice" role="note">
         <strong>Browser-only demonstration</strong>
-        <span>No institutional login is required. Files remain in this browser; registrations need a protected shared API for real multi-phone use.</span>
+        <span>No student login is required. Each class keeps its latest roster in this instructor browser; server-enforced instructor access requires a protected shared API.</span>
       </div>
     </section>
 
@@ -48,6 +48,9 @@
             </div>
             <p class="section-intro">Supports the Blackboard UTF-16 tab-separated <code>.xls</code> export, plus <code>.csv</code> and <code>.tsv</code> files. Grade columns are ignored.</p>
             <div class="roster-controls">
+              <label>Saved class
+                <select id="class-select"><option value="">New class</option></select>
+              </label>
               <label>Class or section
                 <input id="class-name" value="CSBP441-21086" maxlength="60">
               </label>
@@ -177,6 +180,6 @@
 
   <footer><span>CSBP441 Applied Computer Vision</span><span>Attendance prototype</span></footer>
   <script src="vendor/qrcode.min.js"></script>
-  <script src="attendance.js?v=20260921e"></script>
+  <script src="attendance.js?v=20260921f"></script>
 </body>
 </html>
