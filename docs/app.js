@@ -38,7 +38,7 @@
           <section class="lecture-section" id="hands-on"><p class="eyebrow">Hands-on material</p><h2>From theory to evidence</h2><div class="workflow">${data.handsOn.map((x,i)=>`<div><span>0${i+1}</span><h3>${esc(x[0])}</h3><p>${esc(x[1])}</p></div>`).join("")}</div></section>
           <section class="lecture-section" id="notebooks"><p class="eyebrow">Colab</p><h2>Run the notebooks</h2><div class="notebook-list">${data.notebooks.map(x=>`<div class="notebook-item"><div><strong>${esc(x[0])}</strong><p>${esc(x[1])}</p></div><div class="button-row"><a class="button button-primary" target="_blank" rel="noopener" href="${notebookUrl(x[2])}">Open in Colab</a><a class="button button-secondary" href="notebooks/${encodeURIComponent(x[2])}">Download</a></div></div>`).join("")}</div></section>
           <section class="lecture-section" id="knowledge-check"><p class="eyebrow">Self-check</p><h2>Interactive MCQs</h2><div id="quiz"></div></section>
-          <section class="lecture-section" id="problem-lab"><p class="eyebrow">Exam practice</p><h2>Parameterized problem generator</h2><p>Use the same seed to reproduce a question, or edit the generated inputs and recalculate. Filtering problems also support image sizes from 4 × 4 to 10 × 10 and 3 × 3, 4 × 4, or 5 × 5 kernels.</p><div id="generator"></div></section>
+          <section class="lecture-section" id="problem-lab"><p class="eyebrow">Exam practice</p><h2>Parameterized problem generator</h2><p>Across the five lecture pages, the generator includes all 43 numbered problems in the LN1-LN5 bank. A seed creates reproducible starting values; every displayed scalar, vector, matrix, and scenario input can then be changed manually before recalculating the worked solution.</p><div id="generator"></div></section>
         </div>
       </main>
     </div>
@@ -124,10 +124,45 @@
         query.set("filterType",problem.editor.filterType);
       }
       history.replaceState(null,"",`${location.pathname}?${query}#problem-lab`);
-      host.querySelector("#problem").innerHTML = `<div class="problem-meta"><span>LN${ln}</span><span>Seed ${esc(seed)}</span><span>${esc(problem.level)}</span></div><h3>${esc(problem.title)}</h3><div class="problem-body">${problem.question}</div><div class="solution" hidden><h4>Worked solution</h4>${problem.solution}</div>`;
+      const bankEditor = problem.editor?.kind==="bank" ? bankEditorHTML(problem.editor) : "";
+      host.querySelector("#problem").innerHTML = `<div class="problem-meta"><span>LN${ln}</span><span>Seed ${esc(seed)}</span><span>${esc(problem.level)}</span></div><h3>${esc(problem.title)}</h3><div class="problem-body"><div class="dynamic-question">${problem.question}</div>${bankEditor}</div><div class="solution" hidden><h4>Worked solution</h4>${problem.solution}</div>`;
       host.querySelector("#toggle-solution").textContent = "Show solution";
       host.querySelector("#copy-note").textContent = "";
       if (problem.editor?.kind==="filter") bindFilterEditor(problem.editor);
+      if (problem.editor?.kind==="bank") bindBankEditor(problem.editor);
+    }
+    function bindBankEditor(editor) {
+      host.querySelector("#recalculate-bank").addEventListener("click",()=>{
+        const values={};
+        let valid=true;
+        editor.fields.forEach(item=>{
+          if(item.type==="matrix"){
+            const inputs=[...host.querySelectorAll(`[data-bank-field="${item.id}"] input`)];
+            const numbers=inputs.map(input=>input.value.trim()===""?NaN:Number(input.value));
+            if(numbers.some(value=>!Number.isFinite(value)))valid=false;
+            const columns=item.value[0].length;
+            const rows=Array.from({length:item.value.length},(_,row)=>numbers.slice(row*columns,(row+1)*columns));
+            values[item.id]=item.unwrap?rows[0]:rows;
+          }else if(item.type==="select"){
+            values[item.id]=host.querySelector(`[data-bank-field="${item.id}"] select`).value;
+          }else{
+            const value=Number(host.querySelector(`[data-bank-field="${item.id}"] input`).value);
+            if(!Number.isFinite(value))valid=false;
+            values[item.id]=value;
+          }
+        });
+        if(!valid){host.querySelector("#manual-status").textContent="Enter a valid value in every input.";return;}
+        const rendered=editor.solve(values);
+        host.querySelector(".dynamic-question").innerHTML=rendered.question;
+        const solution=host.querySelector(".solution");
+        solution.innerHTML=`<h4>Worked solution</h4>${rendered.solution}`;
+        solution.hidden=false;
+        host.querySelector("#toggle-solution").textContent="Hide solution";
+        host.querySelector("#manual-status").textContent="Question and solution recalculated from your manual inputs.";
+      });
+      host.querySelectorAll("[data-bank-field] input, [data-bank-field] select").forEach(input=>input.addEventListener("input",()=>{
+        host.querySelector("#manual-status").textContent="Inputs changed. Recalculate to update the question and solution.";
+      }));
     }
     function bindFilterEditor(editor) {
       host.querySelector("#image-size").addEventListener("change",generate);
@@ -167,6 +202,8 @@
   }
 
   function generateProblem(lecture,type,rng,options={}) {
+    const bankProblem=window.CSBP441_PROBLEM_BANK?.create(type,rng);
+    if(bankProblem)return bankProblem;
     if (lecture===1) return generateLN1(type,rng);
     if (lecture===2) return generateLN2(type,rng);
     if (lecture===3) return generateLN3(type,rng);
@@ -273,6 +310,13 @@
   }
   function editableMatrixHTML(matrix,kind,label){
     return `<div class="matrix-editor-scroll"><div class="editable-matrix" data-matrix="${kind}" style="--cols:${matrix.length}" role="group" aria-label="${esc(label)}">${matrix.flatMap((row,r)=>row.map((value,c)=>`<input type="number" step="any" value="${inputFmt(value)}" aria-label="${esc(label)} row ${r+1}, column ${c+1}">`)).join("")}</div></div>`;
+  }
+  function bankEditorHTML(editor){
+    return `<div class="manual-editor bank-editor"><div class="manual-editor-heading"><div><h4>Manual problem inputs</h4><p>Edit any value, then recalculate the question and worked solution.</p></div><span class="input-mode">Editable</span></div><div class="bank-field-grid">${editor.fields.map(item=>{
+      if(item.type==="matrix")return `<fieldset class="bank-matrix-field" data-bank-field="${esc(item.id)}"><legend>${esc(item.label)}</legend><div class="matrix-editor-scroll"><div class="editable-matrix" style="--cols:${item.value[0].length}">${item.value.flatMap((row,r)=>row.map((value,c)=>`<input type="number" step="any" value="${inputFmt(value)}" aria-label="${esc(item.label)} row ${r+1}, column ${c+1}">`)).join("")}</div></div></fieldset>`;
+      if(item.type==="select")return `<label data-bank-field="${esc(item.id)}">${esc(item.label)}<select>${item.options.map(([value,label])=>`<option value="${esc(value)}" ${value===item.value?"selected":""}>${esc(label)}</option>`).join("")}</select></label>`;
+      return `<label data-bank-field="${esc(item.id)}">${esc(item.label)}<input type="number" step="${esc(item.step||1)}" value="${inputFmt(item.value)}"></label>`;
+    }).join("")}</div><div class="manual-actions"><button class="button button-primary" id="recalculate-bank">Recalculate question and solution</button><p id="manual-status" aria-live="polite">All displayed inputs can be changed manually.</p></div></div>`;
   }
   function filterEditorHTML(image,kernel,name){
     const imageSizes=Array.from({length:7},(_,index)=>index+4);

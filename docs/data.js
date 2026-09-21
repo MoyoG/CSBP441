@@ -34,7 +34,7 @@ window.COURSE_DATA = {
       {q:"A pedestrian is partly hidden by a parked car. This is an example of:", options:["Occlusion","Sampling","Magnification","Color constancy"], answer:0, why:"Occlusion removes visible evidence by hiding part of the target."},
       {q:"Which stage normally follows the main algorithm in a practical pipeline?", options:["Input acquisition","Postprocessing","Sensor manufacture","Dataset licensing"], answer:1, why:"Postprocessing refines raw predictions before a final decision or action."}
     ],
-    problemTypes: [["pipeline","Pipeline diagnosis"],["challenge","Vision challenge analysis"]]
+    problemTypes: [["p01","1. From pixels to a vision decision"],["p04","4. Choose the required output"]]
   },
   2: {
     short: "Digital Images",
@@ -69,7 +69,7 @@ window.COURSE_DATA = {
       {q:"Which task assigns a class to every pixel?", options:["Classification","Localization","Semantic segmentation","Tracking"], answer:2, why:"Semantic segmentation produces a dense pixel-level label map."},
       {q:"Tracking differs from detection because tracking must:", options:["Use grayscale only","Preserve identity across frames","Always estimate depth","Remove all background pixels"], answer:1, why:"Tracking associates observations over time to maintain object identities and trajectories."}
     ],
-    problemTypes: [["storage","Image storage"],["threshold","Threshold and histogram"]]
+    problemTypes: [["p02","2. Image statistics and thresholding"],["p03","3. Bits, levels, and storage"]]
   },
   3: {
     short: "Linear Algebra",
@@ -107,7 +107,15 @@ window.COURSE_DATA = {
       {q:"Which property is preserved by an affine transformation?", options:["Every angle","Every length","Parallelism","Perspective depth"], answer:2, why:"Affine transformations preserve straightness and parallel lines, but not necessarily lengths or angles."},
       {q:"When applying H = TRS to a point, which transformation acts first?", options:["T","R","S","All simultaneously"], answer:2, why:"With column vectors, the rightmost matrix acts first."}
     ],
-    problemTypes: [["vectors","Vectors and angle"],["matrix","Matrix multiplication"],["transform","Transformation composition"]]
+    problemTypes: [
+      ["p05","5. Vector magnitude, distance, and direction"],["p06","6. Dot product using cosine"],
+      ["p07","7. Orthogonality and projection"],["p08","8. Three-dimensional cross product"],
+      ["p09","9. Matrix dimensions and multiplication"],["p10","10. Determinant, inverse, and a linear system"],
+      ["p11","11. Symmetric and skew-symmetric parts"],["p12","12. Images as arrays"],
+      ["p21","21. Scaling and rotation"],["p22","22. Homogeneous translation"],
+      ["p23","23. Transformation order"],["p24","24. Affine transformation of a triangle"],
+      ["p25","25. Recover a simple affine map"]
+    ]
   },
   4: {
     short: "Camera Models",
@@ -145,7 +153,15 @@ window.COURSE_DATA = {
       {q:"Which is an intrinsic camera parameter?", options:["World position","Camera rotation","Focal length in pixels","Object velocity"], answer:2, why:"Focal length belongs to the internal camera calibration matrix."},
       {q:"Radial distortion is commonly most visible:", options:["Near image edges","Only at the center","Only in grayscale images","Only for distant objects"], answer:0, why:"Radial displacement generally grows with distance from the optical axis."}
     ],
-    problemTypes: [["pinhole","Pinhole projection"],["intersection","Line intersection"],["depth","Depth and magnification"]]
+    problemTypes: [
+      ["p13","13. Point cross point gives a line"],["p14","14. Line through two points"],
+      ["p15","15. Line-point incidence test"],["p16","16. Line cross line gives the intersection"],
+      ["p17","17. Parallel lines and a point at infinity"],["p18","18. Equivalent homogeneous points"],
+      ["p19","19. Why the cross product works"],["p20","20. Planes behind homogeneous line vectors"],
+      ["p26","26. Perspective transform and homogeneous division"],["p27","27. Pinhole projection"],
+      ["p28","28. Projection matrix with camera intrinsics"],["p29","29. Depth and magnification"],
+      ["p30","30. Extrinsic translation before projection"]
+    ]
   },
   5: {
     short: "Filtering",
@@ -183,6 +199,14 @@ window.COURSE_DATA = {
       {q:"Which filter is most robust to isolated salt-and-pepper outliers?", options:["Median","Identity","First derivative","Large positive gain"], answer:0, why:"The median depends on ordering rather than the magnitude of extreme values."},
       {q:"A first-derivative filter produces its strongest response in:", options:["Uniform regions","Strong intensity transitions","Every image corner only","Perfectly constant images"], answer:1, why:"Derivatives are near zero in constant regions and large where intensity changes rapidly."}
     ],
-    problemTypes: [["filter","Filter and padding"],["median","Median and outliers"],["gradient","Derivative and edge magnitude"]]
+    problemTypes: [
+      ["p31","31. Brightness, contrast, and clipping"],["p32","32. Histogram and threshold"],
+      ["p33","33. RGB to grayscale point operation"],["p34","34. Valid 2D cross-correlation"],
+      ["p35","35. Boundary handling: zero and replicate"],["p36","36. Cross-correlation versus convolution"],
+      ["p37","37. Gaussian separability and cost"],["p38","38. Median filtering and nonlinearity"],
+      ["p39","39. Impulse response and 2D linearity"],["p40","40. Horizontal and vertical derivatives"],
+      ["p41","41. Mean filter with three padding modes"],["p42","42. Gaussian filter with three padding modes"],
+      ["p43","43. Derivative filter with three padding modes"],["filter","Flexible filter lab"]
+    ]
   }
 };

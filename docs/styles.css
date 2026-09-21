@@ -140,6 +140,12 @@ input, select { min-height: 42px; padding: 8px 10px; color: var(--ink); backgrou
 .editable-matrix input { width: 70px; min-height: 37px; padding: 5px 6px; text-align: right; font: 600 .84rem/1.2 "Cambria Math", Consolas, monospace; }
 .manual-actions { margin-top: 16px; display: flex; align-items: center; gap: 16px; }
 .manual-actions p { margin: 0; color: var(--muted); font-size: .84rem; }
+.bank-field-grid { display: grid; grid-template-columns: repeat(3,minmax(150px,1fr)); gap: 18px; align-items: start; }
+.bank-field-grid > label { min-width: 0; }
+.bank-matrix-field { min-width: 0; margin: 0; padding: 10px 0 0; border: 0; border-top: 2px solid var(--navy); grid-column: span 2; }
+.bank-matrix-field legend { padding: 0 10px 0 0; color: var(--navy); font-size: .85rem; font-weight: 800; }
+.bank-editor .editable-matrix { grid-template-columns: repeat(var(--cols),64px); }
+.bank-editor .editable-matrix input { width: 64px; }
 .padding-results { display: grid; gap: 26px; }
 .padding-results section { min-width: 0; padding-top: 12px; border-top: 1px solid var(--line); }
 .padding-results h5 { margin: 0 0 8px; font-size: 1rem; }
@@ -155,6 +161,7 @@ input, select { min-height: 42px; padding: 8px 10px; color: var(--ink); backgrou
   .lecture-sidebar nav { grid-template-columns: repeat(3,1fr); gap: 0 15px; }
   .workflow { grid-template-columns: repeat(2,1fr); }
   .matrix-editor-layout, .padding-case-content { grid-template-columns: 1fr; }
+  .bank-field-grid { grid-template-columns: repeat(2,minmax(140px,1fr)); }
 }
 @media (max-width: 640px) {
   .site-header { padding: 12px 18px; align-items: flex-start; }
@@ -168,6 +175,8 @@ input, select { min-height: 42px; padding: 8px 10px; color: var(--ink); backgrou
   .lecture-hero, .lecture-main { padding-left: 20px; padding-right: 20px; }
   .generator-controls { grid-template-columns: 1fr; }
   .dimension-controls { grid-template-columns: 1fr; }
+  .bank-field-grid { grid-template-columns: 1fr; }
+  .bank-matrix-field { grid-column: 1; }
   .manual-actions { align-items: flex-start; flex-direction: column; }
   .resource-list a, .notebook-item { grid-template-columns: 1fr; }
   footer { align-items: flex-start; flex-direction: column; justify-content: center; }
