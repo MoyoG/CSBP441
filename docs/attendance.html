@@ -6,7 +6,7 @@
   <meta name="description" content="CSBP441 attendance roster and classroom check-in demonstration.">
   <title>Attendance | CSBP441</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="styles.css?v=20260921h">
+  <link rel="stylesheet" href="styles.css?v=20260921i">
 </head>
 <body class="attendance-page">
   <header class="site-header">
@@ -30,6 +30,24 @@
       <div class="prototype-notice" role="note">
         <strong>Browser-only demonstration</strong>
         <span>No student login is required. Each class keeps its latest roster in this instructor browser; server-enforced instructor access requires a protected shared API.</span>
+      </div>
+    </section>
+
+    <section class="live-service-panel" aria-labelledby="live-service-title">
+      <div>
+        <p class="eyebrow">Real phone attendance</p>
+        <h2 id="live-service-title">Google Sheets live service</h2>
+        <p>Connect the deployed Apps Script web app to share rosters, sessions, and check-ins between the instructor computer and student phones.</p>
+      </div>
+      <div class="live-service-controls">
+        <label>Google Apps Script web app URL
+          <input id="live-app-url" type="url" placeholder="https://script.google.com/macros/s/.../exec">
+        </label>
+        <div class="button-row">
+          <button class="button button-primary" id="save-live-app" type="button">Save and open</button>
+          <a class="button button-secondary" href="https://github.com/MoyoG/CSBP441/tree/main/attendance-backend" target="_blank" rel="noopener">Setup files</a>
+        </div>
+        <p class="form-status" id="live-app-status" aria-live="polite"></p>
       </div>
     </section>
 
@@ -180,6 +198,6 @@
 
   <footer><span>CSBP441 Applied Computer Vision</span><span>Attendance prototype</span></footer>
   <script src="vendor/qrcode.min.js"></script>
-  <script src="attendance.js?v=20260921f"></script>
+  <script src="attendance.js?v=20260921i"></script>
 </body>
 </html>

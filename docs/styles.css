@@ -85,6 +85,13 @@ footer { min-height: 64px; padding: 0 5vw; display: flex; align-items: center; j
 .attendance-heading .lede { margin-bottom: 0; }
 .prototype-notice { padding: 18px 0; display: grid; gap: 4px; border-top: 3px solid var(--amber); border-bottom: 1px solid var(--line); }
 .prototype-notice span { color: var(--muted); font-size: .9rem; }
+.live-service-panel { margin-top: 28px; padding: 24px; display: grid; grid-template-columns: minmax(260px,.75fr) minmax(420px,1.25fr); gap: 38px; align-items: end; color: #fff; background: #214d49; border-radius: 6px; }
+.live-service-panel h2 { margin-bottom: 7px; font-size: 1.45rem; }
+.live-service-panel p:not(.eyebrow) { margin: 0; color: #d5e7e4; }
+.live-service-panel .eyebrow { color: #8be0d5; }
+.live-service-controls { display: grid; gap: 10px; }
+.live-service-controls label { color: #e7f2f0; }
+.live-service-controls .form-status { margin: 0; color: #d5e7e4; }
 .attendance-tabs { margin-top: 40px; display: flex; gap: 2px; border-bottom: 1px solid var(--line); }
 .attendance-tab { padding: 13px 20px; color: var(--muted); background: transparent; border: 0; border-bottom: 3px solid transparent; cursor: pointer; font-weight: 800; }
 .attendance-tab:hover { color: var(--navy); }
@@ -276,6 +283,7 @@ input, select { min-height: 42px; padding: 8px 10px; color: var(--ink); backgrou
   .student-preview { grid-template-columns: 1fr; justify-items: center; gap: 36px; }
   .student-explanation { max-width: 580px; }
   .flow-guide ol { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .live-service-panel { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
   .site-header { padding: 12px 18px; align-items: flex-start; }
@@ -297,6 +305,7 @@ input, select { min-height: 42px; padding: 8px 10px; color: var(--ink); backgrou
   .attendance-callout { align-items: flex-start; flex-direction: column; }
   .attendance-shell { padding: 30px 18px 52px; }
   .attendance-heading { gap: 28px; }
+  .live-service-panel { padding: 20px; }
   .attendance-tabs { overflow-x: auto; }
   .attendance-tab { flex: 0 0 auto; }
   .tool-section { padding: 18px; }

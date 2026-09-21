@@ -8,6 +8,7 @@
     timer: null
   };
   const ROSTER_STORAGE_KEY = "csbp441-attendance-rosters-v1";
+  const LIVE_APP_STORAGE_KEY = "csbp441-attendance-live-app-v1";
 
   const $ = selector => document.querySelector(selector);
   const $$ = selector => [...document.querySelectorAll(selector)];
@@ -24,11 +25,13 @@
   $("#export-attendance").addEventListener("click", exportAttendance);
   $("#clear-demo").addEventListener("click", clearDemo);
   $("#copy-student-link").addEventListener("click", copyStudentLink);
+  $("#save-live-app").addEventListener("click", saveAndOpenLiveApp);
 
   updatePhoneTime();
   setInterval(updatePhoneTime, 15000);
   refreshClassOptions();
   restoreLatestRoster();
+  restoreLiveApp();
   if (new URLSearchParams(location.search).get("view") === "student") {
     document.body.classList.add("student-only");
     showPanel("student-panel");
@@ -42,6 +45,26 @@
     });
     $$(".attendance-panel").forEach(panel => { panel.hidden = panel.id !== panelId; });
     if (panelId === "student-panel") $("#student-identity").focus();
+  }
+
+  function restoreLiveApp() {
+    const saved = localStorage.getItem(LIVE_APP_STORAGE_KEY) || "";
+    $("#live-app-url").value = saved;
+    if (saved) $("#live-app-status").textContent = "Live service connected in this browser. Select Save and open to launch the instructor console.";
+  }
+
+  function saveAndOpenLiveApp() {
+    const value = $("#live-app-url").value.trim();
+    let url;
+    try { url = new URL(value); }
+    catch { $("#live-app-status").textContent = "Enter the deployed Google Apps Script URL ending in /exec."; return; }
+    if (url.protocol !== "https:" || url.hostname !== "script.google.com" || !/\/macros\/s\/[^/]+\/exec\/?$/.test(url.pathname)) {
+      $("#live-app-status").textContent = "Use the HTTPS deployment URL from Apps Script ending in /exec.";
+      return;
+    }
+    localStorage.setItem(LIVE_APP_STORAGE_KEY, url.href);
+    $("#live-app-status").textContent = "Opening the live instructor console.";
+    window.open(url.href, "_blank", "noopener");
   }
 
   function loadDemoRoster() {

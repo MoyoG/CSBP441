@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <style>
+    :root { --ink:#17202a; --muted:#5b6673; --paper:#f5f7f9; --surface:#fff; --line:#d9e0e7; --navy:#173a5e; --teal:#087f75; --red:#a43a42; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:var(--paper); font-family:Arial,"Segoe UI",sans-serif; line-height:1.5; }
+    button,input,select { font:inherit; }
+    button { cursor:pointer; }
+    [hidden] { display:none !important; }
+    header { min-height:64px; padding:0 5vw; display:flex; align-items:center; justify-content:space-between; gap:20px; color:#fff; background:var(--navy); }
+    header strong { font-size:1.08rem; }
+    header span { color:#c7d8e5; font-size:.84rem; }
+    main { width:min(1180px,100%); margin:0 auto; padding:42px 5vw 70px; }
+    h1,h2,h3 { margin-top:0; line-height:1.15; }
+    h1 { margin-bottom:10px; font-size:clamp(2.2rem,5vw,4rem); }
+    h2 { margin-bottom:10px; font-size:1.35rem; }
+    p { color:var(--muted); }
+    .eyebrow { margin:0 0 6px; color:var(--teal); font-size:.75rem; font-weight:800; text-transform:uppercase; letter-spacing:.08em; }
+    .intro { margin-bottom:28px; display:flex; align-items:end; justify-content:space-between; gap:35px; }
+    .intro p:last-child { max-width:660px; margin-bottom:0; }
+    .view-switch { display:flex; border-bottom:1px solid var(--line); }
+    .view-switch button { padding:12px 18px; color:var(--muted); background:transparent; border:0; border-bottom:3px solid transparent; font-weight:800; }
+    .view-switch button.active { color:var(--navy); border-bottom-color:var(--teal); }
+    .panel { margin-top:22px; padding:24px; background:var(--surface); border:1px solid var(--line); border-radius:6px; }
+    .panel-heading { display:flex; align-items:center; justify-content:space-between; gap:18px; }
+    .panel-heading h2 { margin:0; }
+    .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; align-items:end; }
+    .grid.two { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    label { display:grid; gap:5px; color:var(--muted); font-size:.82rem; font-weight:750; }
+    input,select { min-height:43px; width:100%; padding:8px 10px; color:var(--ink); background:#fff; border:1px solid #b8c6d3; border-radius:4px; }
+    input[type=file] { padding:6px; }
+    .button { min-height:43px; padding:9px 15px; display:inline-flex; align-items:center; justify-content:center; color:var(--navy); background:#fff; border:1px solid #b8c6d3; border-radius:4px; font-weight:800; text-decoration:none; }
+    .button.primary { color:#fff; background:var(--teal); border-color:var(--teal); }
+    .button.danger { color:var(--red); border-color:#d9aeb2; }
+    .button:disabled { opacity:.5; cursor:not-allowed; }
+    .button-row { display:flex; flex-wrap:wrap; gap:9px; }
+    .status { min-height:24px; margin:12px 0 0; font-size:.86rem; }
+    .status.error { color:#8a2530; }
+    .status.success { color:#08705b; font-weight:750; }
+    .auth-panel { max-width:620px; }
+    .auth-row { display:grid; grid-template-columns:1fr auto; gap:10px; align-items:end; }
+    .workspace { display:grid; gap:17px; }
+    .session-live { margin-top:18px; padding:25px; display:grid; grid-template-columns:minmax(180px,.55fr) 320px minmax(260px,.8fr); gap:30px; align-items:center; color:#fff; background:#173a5e; border-radius:5px; }
+    .code { display:grid; }
+    .code span,.qr-copy span { color:#bdd0df; font-size:.8rem; }
+    .code strong { font:800 2.7rem/1.1 Consolas,monospace; letter-spacing:.12em; }
+    .qr { width:300px; height:300px; padding:10px; display:grid; place-items:center; background:#fff; }
+    .qr img,.qr canvas { width:280px !important; height:280px !important; }
+    .qr-copy { display:grid; gap:5px; }
+    .facts { margin:16px 0 0; display:grid; grid-template-columns:repeat(3,1fr); border-top:1px solid #55728a; }
+    .facts div { padding:12px 10px 0 0; }
+    .facts dt { color:#bdd0df; font-size:.72rem; }
+    .facts dd { margin:3px 0 0; font-weight:800; }
+    .table-wrap { max-height:420px; margin-top:16px; overflow:auto; border:1px solid var(--line); }
+    table { width:100%; border-collapse:collapse; font-size:.86rem; }
+    th,td { padding:10px 12px; text-align:left; border-bottom:1px solid var(--line); white-space:nowrap; }
+    th { color:var(--muted); background:#f1f4f6; font-size:.72rem; text-transform:uppercase; }
+    .present { color:#08705b; font-weight:800; }
+    .student-shell { width:min(440px,100%); margin:20px auto 0; }
+    .student-card { padding:27px; background:#fff; border:1px solid var(--line); border-top:5px solid var(--teal); border-radius:6px; box-shadow:0 16px 45px rgba(18,35,52,.09); }
+    .student-card form { display:grid; gap:15px; }
+    .student-meta { margin:18px 0; padding:13px; background:#edf3f7; border-left:3px solid var(--navy); }
+    .student-meta strong,.student-meta span { display:block; }
+    .student-meta span { color:var(--muted); font-size:.82rem; }
+    .result { margin-top:17px; padding:13px; border:1px solid transparent; }
+    .result:empty { display:none; }
+    .result.success { color:#075d48; background:#e5f5ef; border-color:#9ecfbe; }
+    .result.error { color:#8a2530; background:#fbeaec; border-color:#dfafb4; }
+    .security-note { margin-top:20px; padding:13px; color:#5b6673; background:#fff7e9; border-left:3px solid #b66a12; font-size:.82rem; }
+    @media(max-width:900px) {
+      .intro { display:block; }
+      .grid,.grid.two { grid-template-columns:1fr 1fr; }
+      .session-live { grid-template-columns:1fr; justify-items:center; text-align:center; }
+      .qr-copy { justify-items:center; }
+      .facts { width:100%; }
+    }
+    @media(max-width:560px) {
+      header { padding:12px 18px; display:grid; gap:0; }
+      main { padding:28px 17px 50px; }
+      .panel { padding:18px; }
+      .grid,.grid.two,.auth-row { grid-template-columns:1fr; }
+      .view-switch button { flex:1; }
+      .qr { width:260px; height:260px; }
+      .qr img,.qr canvas { width:240px !important; height:240px !important; }
+      .facts { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header><strong>CSBP441 Attendance</strong><span>Google Sheets live service</span></header>
+  <main>
+    <section class="intro">
+      <div><p class="eyebrow">Live classroom attendance</p><h1 id="page-title">Instructor console</h1></div>
+      <p id="page-summary">Manage saved class rosters, open a timed session, and watch phone check-ins arrive in the shared attendance sheet.</p>
+    </section>
+
+    <div class="view-switch" id="view-switch">
+      <button type="button" id="show-instructor" class="active">Instructor</button>
+      <button type="button" id="show-student">Student preview</button>
+    </div>
+
+    <section id="instructor-view">
+      <div class="panel auth-panel" id="auth-panel">
+        <p class="eyebrow">Protected controls</p><h2>Unlock instructor tools</h2>
+        <p>Use the passphrase created during setup. Student phones never receive or store this passphrase.</p>
+        <div class="auth-row"><label>Instructor passphrase<input id="passphrase" type="password" autocomplete="current-password"></label><button class="button primary" id="unlock" type="button">Unlock</button></div>
+        <p class="status" id="auth-status" aria-live="polite"></p>
+      </div>
+
+      <div class="workspace" id="instructor-workspace" hidden>
+        <section class="panel">
+          <div class="panel-heading"><div><p class="eyebrow">Step 1</p><h2>Latest roster for each class</h2></div><span id="class-count">0 classes</span></div>
+          <p>Uploading a roster replaces only the selected class roster. Previous attendance records remain in the Sheet.</p>
+          <div class="grid">
+            <label>Class or section<input id="class-name" value="CSBP441-21086" maxlength="80"></label>
+            <label>Blackboard roster<input id="roster-file" type="file" accept=".xls,.csv,.tsv,.txt"></label>
+            <button class="button primary" id="upload-roster" type="button">Save latest roster</button>
+          </div>
+          <p class="status" id="roster-status" aria-live="polite">Choose the Blackboard export used by the browser demonstration.</p>
+          <div class="table-wrap" id="class-table-wrap" hidden><table><thead><tr><th>Class</th><th>Students</th><th>Latest upload</th></tr></thead><tbody id="class-body"></tbody></table></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-heading"><div><p class="eyebrow">Step 2</p><h2>Open a phone session</h2></div><span id="session-state">Closed</span></div>
+          <div class="grid">
+            <label>Class<select id="session-class"></select></label>
+            <label>Session label<input id="session-label" value="Class attendance" maxlength="100"></label>
+            <label>Open for<select id="duration"><option value="3">3 minutes</option><option value="5" selected>5 minutes</option><option value="10">10 minutes</option><option value="15">15 minutes</option></select></label>
+          </div>
+          <div class="button-row" style="margin-top:14px"><button class="button primary" id="start-session" type="button">Start session</button><button class="button danger" id="close-session" type="button" disabled>Close session</button></div>
+          <p class="status" id="session-status" aria-live="polite"></p>
+          <div class="session-live" id="session-live" hidden>
+            <div class="code"><span>Current classroom code</span><strong id="live-code">------</strong><span>Changes every 60 seconds</span></div>
+            <div id="qr" class="qr" aria-label="Student attendance QR code"></div>
+            <div class="qr-copy"><strong>Scan to check in</strong><span>This QR contains the live session ID. Students enter the rotating code shown in class.</span><a class="button" id="student-link" target="_blank" rel="noopener">Open student page</a></div>
+          </div>
+          <dl class="facts" id="session-facts" hidden><div><dt>Time remaining</dt><dd id="time-left">--:--</dd></div><div><dt>Present</dt><dd id="present-count">0 / 0</dd></div><div><dt>Next code</dt><dd id="code-left">-- s</dd></div></dl>
+        </section>
+
+        <section class="panel">
+          <div class="panel-heading"><div><p class="eyebrow">Step 3</p><h2>Live attendance</h2></div><button class="button" id="refresh-results" type="button" disabled>Refresh</button></div>
+          <div class="table-wrap"><table><thead><tr><th>Student</th><th>Student ID</th><th>Status</th><th>Check-in time</th></tr></thead><tbody id="attendance-body"><tr><td colspan="4">Start a session to see results.</td></tr></tbody></table></div>
+        </section>
+      </div>
+    </section>
+
+    <section id="student-view" hidden>
+      <div class="student-shell">
+        <div class="student-card">
+          <p class="eyebrow">Student check-in</p><h2 id="student-title">Loading session...</h2>
+          <div class="student-meta"><strong id="student-class">Please wait</strong><span id="student-timer">Checking whether attendance is open.</span></div>
+          <form id="student-form">
+            <label>Student ID or roster username<input id="student-id" inputmode="numeric" autocomplete="username" required></label>
+            <label>Six-digit classroom code<input id="student-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required></label>
+            <button class="button primary" id="check-in" type="submit">Check in</button>
+          </form>
+          <div class="result" id="student-result" aria-live="polite"></div>
+          <div class="security-note">No student login is required. Entering an ID does not prove identity, so do not share your ID or the classroom code.</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script>
+    "use strict";
+    var BOOTSTRAP = <?!= bootstrap ?>;
+    var state = {passphrase:"", classes:[], session:null, poller:null, roster:[]};
+    var $ = function(selector){ return document.querySelector(selector); };
+    var esc = function(value){ return String(value == null ? "" : value).replace(/[&<>'"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c];}); };
+
+    $("#show-instructor").addEventListener("click",function(){ showView("instructor"); });
+    $("#show-student").addEventListener("click",function(){ showView("student"); });
+    $("#unlock").addEventListener("click",unlock);
+    $("#upload-roster").addEventListener("click",uploadRoster);
+    $("#roster-file").addEventListener("change",readRoster);
+    $("#start-session").addEventListener("click",startSession);
+    $("#close-session").addEventListener("click",closeSession);
+    $("#refresh-results").addEventListener("click",refreshSession);
+    $("#student-form").addEventListener("submit",submitCheckIn);
+    $("#passphrase").addEventListener("keydown",function(event){ if(event.key === "Enter") unlock(); });
+
+    if (BOOTSTRAP.view === "student") {
+      $("#view-switch").hidden = true;
+      showView("student");
+      loadStudentSession();
+    } else {
+      showView("instructor");
+    }
+
+    function callServer(name,args) {
+      return new Promise(function(resolve,reject){
+        var runner = google.script.run.withSuccessHandler(resolve).withFailureHandler(function(error){ reject(new Error(error && error.message ? error.message : String(error))); });
+        runner[name].apply(runner,args || []);
+      });
+    }
+
+    function showView(view) {
+      var student = view === "student";
+      $("#instructor-view").hidden = student;
+      $("#student-view").hidden = !student;
+      $("#show-instructor").classList.toggle("active",!student);
+      $("#show-student").classList.toggle("active",student);
+      $("#page-title").textContent = student ? "Student check-in" : "Instructor console";
+      $("#page-summary").textContent = student ? "Enter your roster ID and the rotating code displayed in the classroom." : "Manage saved class rosters, open a timed session, and watch phone check-ins arrive in the shared attendance sheet.";
+    }
+
+    async function unlock() {
+      setStatus("auth-status","Checking passphrase...","");
+      try {
+        state.passphrase = $("#passphrase").value;
+        var data = await callServer("instructorBootstrap",[state.passphrase]);
+        state.classes = data.classes || [];
+        $("#auth-panel").hidden = true;
+        $("#instructor-workspace").hidden = false;
+        renderClasses();
+        setStatus("auth-status","","");
+      } catch(error) {
+        state.passphrase = "";
+        setStatus("auth-status",error.message,"error");
+      }
+    }
+
+    async function readRoster(event) {
+      var file = event.target.files[0];
+      if (!file) return;
+      try {
+        var buffer = await file.arrayBuffer();
+        var bytes = new Uint8Array(buffer);
+        var text = bytes[0] === 255 && bytes[1] === 254 ? new TextDecoder("utf-16le").decode(bytes) : new TextDecoder("utf-8").decode(bytes);
+        var delimiter = ((text.split(/\r?\n/,1)[0].match(/\t/g)||[]).length >= (text.split(/\r?\n/,1)[0].match(/,/g)||[]).length) ? "\t" : ",";
+        state.roster = mapRoster(parseDelimited(text,delimiter));
+        setStatus("roster-status",file.name + " is ready: " + state.roster.length + " valid students. Select Save latest roster.","success");
+      } catch(error) {
+        state.roster = [];
+        setStatus("roster-status",error.message,"error");
+      }
+    }
+
+    async function uploadRoster() {
+      if (!state.roster.length) return setStatus("roster-status","Choose and validate a roster file first.","error");
+      setStatus("roster-status","Saving the latest roster...","");
+      try {
+        var result = await callServer("saveRoster",[state.passphrase,$("#class-name").value,state.roster]);
+        setStatus("roster-status",result.count + " students saved for " + result.className + ".","success");
+        var data = await callServer("instructorBootstrap",[state.passphrase]);
+        state.classes = data.classes || [];
+        renderClasses(result.className);
+      } catch(error) { setStatus("roster-status",error.message,"error"); }
+    }
+
+    function renderClasses(selected) {
+      $("#class-count").textContent = state.classes.length + (state.classes.length === 1 ? " class" : " classes");
+      $("#class-table-wrap").hidden = !state.classes.length;
+      $("#class-body").innerHTML = state.classes.map(function(item){ return "<tr><td>"+esc(item.name)+"</td><td>"+item.count+"</td><td>"+esc(formatDate(item.uploadedAt))+"</td></tr>"; }).join("");
+      $("#session-class").innerHTML = state.classes.length ? state.classes.map(function(item){ return '<option value="'+esc(item.name)+'" '+(item.name===selected?"selected":"")+'>'+esc(item.name)+" ("+item.count+")</option>"; }).join("") : '<option value="">Upload a roster first</option>';
+    }
+
+    async function startSession() {
+      setStatus("session-status","Opening attendance...","");
+      try {
+        var session = await callServer("startSession",[state.passphrase,$("#session-class").value,$("#session-label").value,$("#duration").value]);
+        renderSession(session);
+        clearInterval(state.poller);
+        state.poller = setInterval(refreshSession,5000);
+        setStatus("session-status","Attendance is open. Project the QR and code.","success");
+      } catch(error) { setStatus("session-status",error.message,"error"); }
+    }
+
+    async function refreshSession() {
+      if (!state.session) return;
+      try { renderSession(await callServer("getInstructorSession",[state.passphrase,state.session.sessionId])); }
+      catch(error) { setStatus("session-status",error.message,"error"); }
+    }
+
+    function renderSession(session) {
+      state.session = session;
+      $("#session-state").textContent = session.open ? "Open" : "Closed";
+      $("#session-live").hidden = !session.open;
+      $("#session-facts").hidden = false;
+      $("#close-session").disabled = !session.open;
+      $("#refresh-results").disabled = false;
+      $("#live-code").textContent = session.code || "------";
+      $("#time-left").textContent = formatDuration(session.secondsRemaining);
+      $("#present-count").textContent = session.presentCount + " / " + session.rosterCount;
+      $("#code-left").textContent = session.codeSecondsRemaining + " s";
+      $("#student-link").href = session.studentUrl;
+      renderQR(session.studentUrl);
+      $("#attendance-body").innerHTML = session.rows.map(function(row){ return "<tr><td>"+esc(row.name)+"</td><td>"+esc(row.studentId)+"</td><td class='"+(row.status==="Present"?"present":"")+"'>"+esc(row.status)+"</td><td>"+esc(row.checkedInAt?formatDate(row.checkedInAt):"-")+"</td></tr>"; }).join("");
+      if (!session.open) clearInterval(state.poller);
+    }
+
+    async function closeSession() {
+      if (!state.session) return;
+      try { await callServer("closeSession",[state.passphrase,state.session.sessionId]); await refreshSession(); setStatus("session-status","Attendance is closed.",""); }
+      catch(error) { setStatus("session-status",error.message,"error"); }
+    }
+
+    function renderQR(url) {
+      var host = $("#qr"); host.innerHTML = "";
+      if (typeof QRCode === "undefined") { host.textContent = "QR unavailable. Use the student link."; return; }
+      new QRCode(host,{text:url,width:300,height:300,colorDark:"#17202a",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.H});
+    }
+
+    async function loadStudentSession() {
+      if (!BOOTSTRAP.sessionId) return studentError("This QR link does not contain a session.");
+      try {
+        var info = await callServer("getStudentSession",[BOOTSTRAP.sessionId]);
+        $("#student-title").textContent = info.label || "Attendance";
+        $("#student-class").textContent = info.className || "Unknown class";
+        $("#student-timer").textContent = info.open ? "Open for " + formatDuration(info.secondsRemaining) : (info.message || "Session closed");
+        $("#check-in").disabled = !info.open;
+      } catch(error) { studentError(error.message); }
+    }
+
+    async function submitCheckIn(event) {
+      event.preventDefault();
+      $("#check-in").disabled = true;
+      $("#student-result").className = "result";
+      $("#student-result").textContent = "Checking roster and classroom code...";
+      try {
+        var result = await callServer("studentCheckIn",[BOOTSTRAP.sessionId,$("#student-id").value,$("#student-code").value]);
+        $("#student-result").className = "result success";
+        $("#student-result").textContent = "Attendance recorded for " + result.name + " at " + formatDate(result.checkedInAt) + ".";
+        $("#student-code").value = "";
+      } catch(error) {
+        studentError(error.message);
+        $("#check-in").disabled = false;
+      }
+    }
+
+    function studentError(message) { $("#student-result").className="result error"; $("#student-result").textContent=message; }
+    function setStatus(id,message,type) { var element=$("#"+id); element.textContent=message; element.className="status"+(type?" "+type:""); }
+    function formatDuration(seconds) { seconds=Math.max(0,Number(seconds)||0); return String(Math.floor(seconds/60)).padStart(2,"0")+":"+String(seconds%60).padStart(2,"0"); }
+    function formatDate(value) { if(!value)return ""; return new Intl.DateTimeFormat([],{dateStyle:"medium",timeStyle:"short"}).format(new Date(value)); }
+
+    function parseDelimited(text,delimiter) {
+      var rows=[],row=[],field="",quoted=false,input=text.replace(/^\uFEFF/,"");
+      for(var i=0;i<input.length;i+=1){var char=input[i];if(char==='"'){if(quoted&&input[i+1]==='"'){field+='"';i+=1;}else quoted=!quoted;}else if(char===delimiter&&!quoted){row.push(field.trim());field="";}else if((char==="\n"||char==="\r")&&!quoted){if(char==="\r"&&input[i+1]==="\n")i+=1;row.push(field.trim());field="";if(row.some(Boolean))rows.push(row);row=[];}else field+=char;}
+      row.push(field.trim());if(row.some(Boolean))rows.push(row);if(rows.length<2)throw new Error("The file does not contain student records.");
+      var headers=rows[0].map(function(value){return value.trim();});
+      return rows.slice(1).map(function(values){var record={};headers.forEach(function(header,index){record[header]=values[index]||"";});return record;});
+    }
+
+    function mapRoster(records) {
+      var names=Object.keys(records[0]||{}),find=function(options){return names.find(function(name){return options.indexOf(name.trim().toLowerCase())>=0;});};
+      var columns={studentId:find(["student id","studentid","id"]),username:find(["username","user name"]),firstName:find(["first name","firstname","given name"]),lastName:find(["last name","lastname","family name","surname"]),available:find(["availability","available"])};
+      if(!columns.studentId||!columns.username||!columns.firstName||!columns.lastName)throw new Error("Required columns: Student ID, Username, First Name, and Last Name.");
+      var students=records.map(function(record){return {studentId:String(record[columns.studentId]||"").trim(),username:String(record[columns.username]||"").trim(),firstName:String(record[columns.firstName]||"").trim(),lastName:String(record[columns.lastName]||"").trim(),available:columns.available?String(record[columns.available]||"").trim():"Yes"};}).filter(function(student){return student.studentId||student.username;});
+      var ids={},users={};students.forEach(function(student){if(!student.studentId||!student.username||!student.firstName||!student.lastName)throw new Error("A roster row is missing an identity field.");var id=student.studentId.toLowerCase(),user=student.username.toLowerCase();if(ids[id])throw new Error("Duplicate Student ID: "+student.studentId);if(users[user])throw new Error("Duplicate Username: "+student.username);ids[id]=true;users[user]=true;});
+      if(!students.length)throw new Error("No students were found.");return students;
+    }
+  </script>
+</body>
+</html>
