@@ -293,5 +293,80 @@ window.COURSE_DATA = {
       ["p41","41. Mean filter with three padding modes"],["p42","42. Gaussian filter with three padding modes"],
       ["p43","43. Derivative filter with three padding modes"],["filter","Flexible filter lab"]
     ]
+  },
+  6: {
+    short: "Edge Detection",
+    title: "Edge Detection and Boundary Analysis",
+    summary: "Detect meaningful intensity transitions, compare first- and second-derivative methods, tune Canny, and justify edge-detection choices for a real image task.",
+    image: "assets/ln5.png",
+    objectives: [
+      "Explain how gradients, magnitude, and direction describe image edges.",
+      "Compare Roberts, Prewitt, Sobel, Scharr, Laplacian, LoG, DoG, and Canny.",
+      "Select smoothing and threshold parameters from image evidence and task requirements.",
+      "Implement and evaluate an edge-detection pipeline in OpenCV."
+    ],
+    concepts: [
+      ["Gradient", "The first derivative measures local intensity change. Gx responds most strongly to vertical boundaries, Gy to horizontal boundaries, and gradient magnitude measures edge strength."],
+      ["Smoothing before differentiation", "Noise produces large derivative responses. Gaussian smoothing reduces this sensitivity, but excessive smoothing can blur or shift fine boundaries."],
+      ["First and second derivatives", "Sobel and Scharr use first derivatives. Laplacian, LoG, and DoG use second-derivative behavior, where sign changes help locate candidate edges."],
+      ["Canny pipeline", "Canny combines smoothing, gradient estimation, non-maximum suppression, double thresholding, and hysteresis to produce thin and connected edge maps."],
+      ["Evaluation", "A dense edge map is not necessarily better. Compare useful boundaries, missed boundaries, noise responses, localization, and the downstream task."],
+      ["Deployment tradeoff", "Fixed small kernels are efficient, while larger smoothing kernels and multi-stage processing increase cost. The right choice depends on image scale, noise, and timing limits."]
+    ],
+    handsOn: [
+      ["Measure", "Calculate Gx, Gy, magnitude, and direction for selected image neighborhoods."],
+      ["Compare", "Run Sobel, Scharr, Laplacian, LoG, and Canny on the same image."],
+      ["Tune", "Change Gaussian sigma and Canny thresholds, then record which boundaries improve or disappear."],
+      ["Interpret", "Explain one edge-detection failure and propose a practical correction for the target application."]
+    ],
+    notebooks: [
+      ["Edge detection laboratory", "Upload an image and compare gradient, Laplacian, LoG, DoG, and Canny results with worked calculations.", "LN6_Edge_Detection.ipynb"]
+    ],
+    mcqs: [
+      {q:"What does a large gradient magnitude usually indicate?",options:["A uniformly bright region","A rapid local intensity change","A guaranteed object boundary","A zero crossing"],answer:1,why:"Gradient magnitude is large where intensity changes rapidly; that change may or may not be a meaningful object boundary."},
+      {q:"For the usual Sobel convention, Gx responds most strongly to which boundary?",options:["A vertical boundary","A horizontal boundary","A circular boundary only","No boundary"],answer:0,why:"Gx differentiates from left to right, so it responds to intensity changes across a vertical boundary."},
+      {q:"Why is Gaussian smoothing commonly applied before a derivative operator?",options:["It guarantees perfect edge localization","It reduces noise that derivatives would amplify","It converts every image to binary","It removes the need for thresholds"],answer:1,why:"Derivatives amplify small local fluctuations. Smoothing suppresses many noise-driven responses before differentiation."},
+      {q:"Which property makes the Sobel operator less noise-sensitive than the simple [-1, 0, 1] derivative?",options:["It uses color channels","It includes smoothing weights in the perpendicular direction","It uses no convolution","It produces only positive values"],answer:1,why:"The [1, 2, 1] weighting perpendicular to the derivative averages nearby values."},
+      {q:"What is the main purpose of non-maximum suppression in Canny edge detection?",options:["Increase edge thickness","Keep only local maxima along the gradient direction","Replace weak edges with strong edges","Calculate a Laplacian"],answer:1,why:"Non-maximum suppression thins a broad ridge of gradient responses to its local peak."},
+      {q:"In Canny hysteresis, a weak edge is retained when it is:",options:["Below the low threshold","Connected to a strong edge","Brighter than the image mean","At the image border"],answer:1,why:"Hysteresis preserves weak pixels only when they connect to a strong-edge component."},
+      {q:"Which detector most directly uses zero crossings to identify candidate edges?",options:["Sobel","Prewitt","Laplacian of Gaussian","Roberts"],answer:2,why:"LoG is a second-derivative method; a sign change around a location is its usual edge cue."},
+      {q:"What is a likely consequence of increasing Gaussian sigma too much before edge detection?",options:["Less noise and sharper localization","More fine detail and no blur","Suppressed fine boundaries and poorer localization","No change in the edge map"],answer:2,why:"Large sigma removes noise but can merge, weaken, or displace fine boundaries."},
+      {q:"Which change usually makes Canny return fewer edge pixels?",options:["Lowering both thresholds","Raising both thresholds","Removing non-maximum suppression","Increasing image contrast"],answer:1,why:"Higher thresholds require stronger gradient responses before a pixel can be accepted."},
+      {q:"Which statement correctly interprets edge direction?",options:["Gradient direction normally runs along the boundary","Gradient direction normally points across the boundary","Direction is unrelated to Gx and Gy","All edges have direction 0 degrees"],answer:1,why:"The gradient points toward the greatest increase in intensity, which is perpendicular to the local edge tangent."},
+      {q:"Why can an edge map with more detected pixels be worse?",options:["More pixels always reduce memory","Extra pixels can represent noise, texture, or thick duplicate responses","Edges must contain exactly one pixel","An edge map cannot contain texture"],answer:1,why:"Edge density alone is not quality; the map should retain useful boundaries while rejecting irrelevant responses."},
+      {q:"What is the relationship between DoG and LoG?",options:["DoG is a practical approximation to scale-normalized LoG behavior","DoG is identical to a first derivative","LoG cannot be smoothed","They both require color images"],answer:0,why:"The difference of two Gaussian-blurred images approximates a Laplacian-of-Gaussian response at an appropriate scale."},
+      {q:"A constant-intensity image is filtered with a derivative kernel whose coefficients sum to zero. What response is expected away from borders?",options:["A large positive response","A large negative response","Approximately zero","The original intensity"],answer:2,why:"Equal input values cancel under a zero-sum derivative kernel."},
+      {q:"Which parameter choice best suits a noisy industrial inspection image when faint defects must be preserved?",options:["No smoothing and very high thresholds","Moderate smoothing with validated double thresholds","Maximum smoothing and zero thresholds","Any settings because thresholds never matter"],answer:1,why:"Moderate smoothing can control noise while carefully chosen low and high thresholds preserve faint but connected defect boundaries."},
+      {q:"Which OpenCV function directly computes a Canny edge map?",options:["cv2.Canny","cv2.threshold","cv2.resize","cv2.addWeighted"],answer:0,why:"cv2.Canny implements the multi-stage Canny edge detector."},
+      {q:"Why might Scharr be preferred over Sobel for a small 3 x 3 derivative kernel?",options:["It is designed for improved rotational symmetry and accuracy","It eliminates all noise without smoothing","It needs no gradient direction","It creates a segmentation mask directly"],answer:0,why:"Scharr modifies the 3 x 3 weights to improve derivative accuracy and rotational behavior."},
+      {q:"What does a positive Gx response mean under the kernel [-1, 0, 1]?",options:["Intensity increases from left to right","Intensity decreases from left to right","The pixel is certainly an edge center","The image is binary"],answer:0,why:"The right side is positively weighted and the left side negatively weighted, so a brighter right side gives a positive response."},
+      {q:"Which metric is most useful for comparing a predicted binary edge mask with a labeled edge mask?",options:["IoU or precision and recall","Image width only","Mean RGB color","File extension"],answer:0,why:"IoU, precision, and recall quantify overlap and the tradeoff between false and missed edges."},
+      {q:"Which stage is unique to the standard Canny pipeline among the listed choices?",options:["Hysteresis thresholding","Image acquisition","Gaussian blur only","Pixel display"],answer:0,why:"Hysteresis links weak responses to strong edges using two thresholds and connectivity."},
+      {q:"For fixed small kernels, how does edge-filtering work scale with the number of image pixels?",options:["Approximately linearly","Quadratically with image width only","Independently of image size","Exponentially"],answer:0,why:"A fixed-size kernel performs a constant amount of work per pixel, so total work is O(HW)."}
+    ],
+    trueFalse: [
+      {q:"A bright pixel in a gradient-magnitude image always corresponds to a bright pixel in the original image.",answer:false,why:"A bright magnitude means a strong local change, not high original intensity."},
+      {q:"Gx and Gy can have negative as well as positive values before magnitude is computed.",answer:true,why:"They are signed directional derivatives; the sign indicates the direction of intensity change."},
+      {q:"Gradient magnitude can be computed as sqrt(Gx squared plus Gy squared).",answer:true,why:"This is the Euclidean magnitude of the two-component image gradient."},
+      {q:"The gradient direction usually lies parallel to the visible edge boundary.",answer:false,why:"The gradient normally points across the boundary, perpendicular to the edge tangent."},
+      {q:"Derivatives tend to amplify image noise.",answer:true,why:"Small intensity fluctuations can create relatively large derivative responses."},
+      {q:"Sobel uses both differentiation and local smoothing weights.",answer:true,why:"Its kernel differentiates in one axis and applies [1, 2, 1] smoothing in the other."},
+      {q:"A zero crossing in a Laplacian response should always be accepted as a real edge.",answer:false,why:"Small noisy sign changes need a contrast or magnitude condition before acceptance."},
+      {q:"Canny uses two thresholds rather than one threshold.",answer:true,why:"Pixels are classified as strong, weak, or rejected before hysteresis."},
+      {q:"A weak Canny response disconnected from all strong responses is normally rejected.",answer:true,why:"Hysteresis retains only weak pixels that connect to a strong edge."},
+      {q:"Increasing Canny thresholds generally increases the number of detected edge pixels.",answer:false,why:"Higher thresholds are stricter and generally reduce accepted edges."},
+      {q:"Non-maximum suppression helps make Canny boundaries thin.",answer:true,why:"It retains local gradient peaks and suppresses nearby non-peak responses."},
+      {q:"Roberts, Prewitt, Sobel, and Scharr all approximate image derivatives using small kernels.",answer:true,why:"They use different finite-difference kernels to estimate local intensity change."},
+      {q:"The sum of a first-derivative kernel is normally zero so that constant regions produce no response.",answer:true,why:"Positive and negative coefficients cancel when every neighborhood value is equal."},
+      {q:"DoG is formed by adding two Gaussian-blurred images.",answer:false,why:"DoG subtracts responses obtained at two Gaussian scales."},
+      {q:"More smoothing always improves an edge detector.",answer:false,why:"Excessive smoothing can erase or displace small, important boundaries."},
+      {q:"For a fixed kernel size, filtering a 1024 x 1024 image requires about four times the work of a 512 x 512 image.",answer:true,why:"The larger image has four times as many pixels, so fixed-kernel work grows by about four."},
+      {q:"A lower Canny threshold controls which pixels are initially classified as strong edges.",answer:false,why:"The high threshold defines strong edges; the low threshold defines weak candidates."},
+      {q:"Edge detection alone identifies the semantic class of every object in an image.",answer:false,why:"Edges show local changes and boundaries, but they do not by themselves assign object meaning."},
+      {q:"The best edge-detector settings can depend on noise, contrast, image scale, and the downstream task.",answer:true,why:"There is no universal threshold or sigma that is optimal for every image and application."},
+      {q:"Overlaying detected edges on the original image changes the edge detector itself.",answer:false,why:"An overlay is a visualization of an already computed edge map."}
+    ],
+    problemTypes: [["edgecalc","Gradient calculation"],["canny","Canny threshold and hysteresis"]],
+    problemBankLink: "ln6-problems.html"
   }
 };

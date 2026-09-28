@@ -19,7 +19,7 @@
   app.innerHTML = `
     <header class="site-header">
       <a class="course-mark" href="index.html"><span class="course-code">CSBP441</span><span>Applied Computer Vision</span></a>
-      <nav class="top-nav" aria-label="Lecture navigation"><a href="ln${Math.max(1,ln-1)}.html">Previous LN</a><a href="index.html">Course home</a><a href="ln${Math.min(5,ln+1)}.html">Next LN</a></nav>
+      <nav class="top-nav" aria-label="Lecture navigation"><a href="ln${Math.max(1,ln-1)}.html">Previous LN</a><a href="index.html">Course home</a><a href="ln${Math.min(Object.keys(window.COURSE_DATA).length,ln+1)}.html">Next LN</a></nav>
     </header>
     <div class="lecture-shell">
       <aside class="lecture-sidebar">
@@ -37,9 +37,9 @@
           <section class="lecture-section" id="concepts"><p class="eyebrow">Theory</p><h2>Important concepts</h2><div class="concept-list">${data.concepts.map((x,i)=>`<details ${i===0?"open":""}><summary>${esc(x[0])}</summary><p>${esc(x[1])}</p></details>`).join("")}</div></section>
           <section class="lecture-section" id="hands-on"><p class="eyebrow">Hands-on material</p><h2>From theory to evidence</h2><div class="workflow">${data.handsOn.map((x,i)=>`<div><span>0${i+1}</span><h3>${esc(x[0])}</h3><p>${esc(x[1])}</p></div>`).join("")}</div></section>
           <section class="lecture-section" id="notebooks"><p class="eyebrow">Colab</p><h2>Run the notebooks</h2><div class="notebook-list">${data.notebooks.map(x=>`<div class="notebook-item"><div><strong>${esc(x[0])}</strong><p>${esc(x[1])}</p></div><div class="button-row"><a class="button button-primary" target="_blank" rel="noopener" href="${notebookUrl(x[2])}">Open in Colab</a><a class="button button-secondary" href="notebooks/${encodeURIComponent(x[2])}">Download</a></div></div>`).join("")}</div></section>
-          <section class="lecture-section" id="knowledge-check"><p class="eyebrow">Self-check</p><h2>Interactive MCQs</h2><p>Answer all 10 multiple-choice questions for this lecture note. Feedback explains the best answer after every question.</p><div id="quiz"></div></section>
-          <section class="lecture-section" id="true-false"><p class="eyebrow">Concept check</p><h2>Interactive True or False</h2><p>Answer all 10 statements for this lecture note. Feedback explains why each statement is true or false.</p><div id="true-false-quiz"></div></section>
-          <section class="lecture-section" id="problem-lab"><p class="eyebrow">Exam practice</p><h2>Parameterized problem generator</h2><p>Across the five lecture pages, the generator includes all 43 numbered problems in the LN1-LN5 bank. A seed creates reproducible starting values; every displayed scalar, vector, matrix, and scenario input can then be changed manually before recalculating the worked solution.</p><div id="generator"></div></section>
+          <section class="lecture-section" id="knowledge-check"><p class="eyebrow">Self-check</p><h2>Interactive MCQs</h2><p>Answer all ${data.mcqs.length} multiple-choice questions for this lecture note. Feedback explains the best answer after every question.</p><div id="quiz"></div></section>
+          <section class="lecture-section" id="true-false"><p class="eyebrow">Concept check</p><h2>Interactive True or False</h2><p>Answer all ${(data.trueFalse || []).length} statements for this lecture note. Feedback explains why each statement is true or false.</p><div id="true-false-quiz"></div></section>
+          <section class="lecture-section" id="problem-lab"><p class="eyebrow">Exam practice</p><h2>Parameterized problem generator</h2><p>A seed creates reproducible starting values. Edit the displayed inputs, then recalculate the worked solution.</p>${data.problemBankLink ? `<p><a class="button button-secondary" href="${esc(data.problemBankLink)}">Open the 20-question LN6 problem bank</a></p>` : ""}<div id="generator"></div></section>
         </div>
       </main>
     </div>
@@ -250,7 +250,8 @@
     if (lecture===2) return generateLN2(type,rng);
     if (lecture===3) return generateLN3(type,rng);
     if (lecture===4) return generateLN4(type,rng);
-    return generateLN5(type,rng,options);
+    if (lecture===5) return generateLN5(type,rng,options);
+    return generateLN6(type,rng);
   }
 
   function generateLN1(type,rng) {
@@ -381,5 +382,24 @@
     const name=allowedFilters.includes(options.filterType)?options.filterType:pick(rng,allowedFilters);
     const kernel=makeFilterKernel(name,kernelSize);
     return {level:"Boundary handling",title:`${name[0].toUpperCase()+name.slice(1)} filter with three padding modes`,question:`<p>Apply cross-correlation at the top-left pixel using zero, symmetric, and circular padding. Choose a filter, edit the values or dimensions, then compare the three neighborhoods and outputs.</p>${filterEditorHTML(image,kernel,name)}`,solution:filterSolutionHTML(image,kernel),editor:{kind:"filter",filterType:name,image,kernel}};
+  }
+
+  function generateLN6(type,rng) {
+    if (type==="canny") {
+      const low=pick(rng,[30,50,70]);
+      const high=pick(rng,[120,150,180]);
+      const value=pick(rng,[15,40,60,90,130,170,210]);
+      const connected=value>=low && value<high ? pick(rng,[true,false]) : false;
+      let classification, decision;
+      if(value<low){classification="rejected";decision="It is below the low threshold, so it is rejected.";}
+      else if(value>=high){classification="strong";decision="It meets the high threshold, so it starts or belongs to a strong-edge component.";}
+      else {classification="weak";decision=connected?"It is weak but connected to a strong component, so hysteresis retains it.":"It is weak and disconnected from strong edges, so hysteresis rejects it.";}
+      return {level:"Canny reasoning",title:"Classify a Canny gradient response",question:`<p>Use T<sub>low</sub>=${low} and T<sub>high</sub>=${high}. A non-maximum-suppressed pixel has magnitude ${value}.${classification==="weak"?` It ${connected?"is":"is not"} connected to a strong-edge component.`:""}</p><p>Classify the pixel as rejected, weak, or strong, then state whether it remains in the final Canny map.</p>`,solution:`<p>The pixel is <strong>${classification}</strong>. ${decision}</p>`};
+    }
+    const gx=pick(rng,[-60,-40,-30,30,40,60]);
+    const gy=pick(rng,[-50,-30,20,40,50]);
+    const magnitude=Math.hypot(gx,gy);
+    const angle=Math.atan2(gy,gx)*180/Math.PI;
+    return {level:"Gradient calculation",title:"Gradient magnitude and direction",question:`<p>At one image location, Gx=${gx} and Gy=${gy}. Calculate gradient magnitude and direction using M=sqrt(Gx²+Gy²) and θ=atan2(Gy,Gx). State whether the gradient points along or across the local edge.</p>`,solution:`<p>M=sqrt(${gx}²+${gy}²)=<strong>${fmt(magnitude)}</strong>.</p><p>θ=atan2(${gy},${gx})=<strong>${fmt(angle)} degrees</strong>.</p><p>The gradient points <strong>across</strong> the local edge, toward greatest intensity increase; the visible edge tangent is perpendicular to it.</p>`};
   }
 })();
