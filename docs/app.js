@@ -25,7 +25,7 @@
       <aside class="lecture-sidebar">
         <a class="back-link" href="index.html">Back to course</a>
         <strong>LN${ln} ${esc(data.short)}</strong>
-        <nav><a href="#overview">Overview</a><a href="#concepts">Key concepts</a><a href="#hands-on">Hands-on</a><a href="#notebooks">Colab notebooks</a><a href="#knowledge-check">Interactive MCQs</a><a href="#true-false">True or False</a><a href="#problem-lab">Problem generator</a></nav>
+        <nav><a href="#overview">Overview</a><a href="#concepts">Key concepts</a><a href="#hands-on">Hands-on</a><a href="#notebooks">Colab notebooks</a><a href="#knowledge-check">Interactive MCQs</a><a href="#true-false">True or False</a><a href="#problem-lab">Problem generator</a>${data.takeaways ? `<a href="#takeaways">Summary and takeaways</a>` : ""}</nav>
       </aside>
       <main class="lecture-content">
         <section class="lecture-hero" id="overview">
@@ -40,6 +40,7 @@
           <section class="lecture-section" id="knowledge-check"><p class="eyebrow">Self-check</p><h2>Interactive MCQs</h2><p>Answer all ${data.mcqs.length} multiple-choice questions for this lecture note. Feedback explains the best answer after every question.</p><div id="quiz"></div></section>
           <section class="lecture-section" id="true-false"><p class="eyebrow">Concept check</p><h2>Interactive True or False</h2><p>Answer all ${(data.trueFalse || []).length} statements for this lecture note. Feedback explains why each statement is true or false.</p><div id="true-false-quiz"></div></section>
           <section class="lecture-section" id="problem-lab"><p class="eyebrow">Exam practice</p><h2>Parameterized problem generator</h2><p>A seed creates reproducible starting values. Edit the displayed inputs, then recalculate the worked solution.</p>${data.problemBankLink ? `<p><a class="button button-secondary" href="${esc(data.problemBankLink)}">Open the 20-question LN6 problem bank</a></p>` : ""}<div id="generator"></div></section>
+          ${data.takeaways ? `<section class="lecture-section" id="takeaways"><p class="eyebrow">LN${ln} recap</p><h2>Summary and takeaways</h2><p class="takeaway-summary">${esc(data.recap || data.summary)}</p><ol class="takeaway-list">${data.takeaways.map(item=>`<li>${esc(item)}</li>`).join("")}</ol></section>` : ""}
         </div>
       </main>
     </div>

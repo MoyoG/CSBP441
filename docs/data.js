@@ -319,6 +319,19 @@ window.COURSE_DATA = {
       ["Tune", "Change Gaussian sigma and Canny thresholds, then record which boundaries improve or disappear."],
       ["Interpret", "Explain one edge-detection failure and propose a practical correction for the target application."]
     ],
+    recap: "Edge detection converts local intensity change into boundary evidence. A reliable pipeline balances noise suppression, localization, continuity, and computational cost; its quality must be judged against the image content and the downstream task, not by edge count alone.",
+    takeaways: [
+      "Gx and Gy are signed directional derivatives: Gx responds strongly to vertical boundaries and Gy to horizontal boundaries.",
+      "Gradient magnitude measures edge strength, while atan2(Gy, Gx) gives the direction of greatest intensity increase; the visible edge tangent is perpendicular to that direction.",
+      "Derivative operators amplify noise. Gaussian smoothing improves robustness, but excessive smoothing can weaken, merge, or shift fine boundaries.",
+      "Prewitt provides a simple derivative estimate, Sobel adds perpendicular smoothing weights, and Scharr improves rotational accuracy for a 3 x 3 kernel.",
+      "Laplacian and LoG are second-derivative methods. Candidate edges occur near zero crossings, but weak noise-driven sign changes should be rejected.",
+      "The Canny sequence is Gaussian smoothing, gradient estimation, non-maximum suppression, double thresholding, and edge tracking by hysteresis.",
+      "Non-maximum suppression compares magnitudes along the quantized gradient direction so a broad response becomes a thin boundary.",
+      "The high Canny threshold identifies strong edges; the low threshold identifies weak candidates retained only when connected to a strong edge.",
+      "Higher thresholds usually produce fewer edges, while stronger smoothing reduces noise at the cost of fine detail. Both choices must be validated on representative images.",
+      "Evaluate useful-boundary precision and recall, localization, continuity, false texture responses, runtime, and downstream performance rather than preferring the densest edge map."
+    ],
     notebooks: [
       ["Edge detection laboratory", "Upload an image and compare gradient, Laplacian, LoG, DoG, and Canny results with worked calculations.", "LN6_Edge_Detection.ipynb"]
     ],
