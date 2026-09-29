@@ -34,10 +34,10 @@
         <details><summary>19. Practical detector selection</summary><p>Choose a detector for real-time lane-boundary preprocessing on a moderately noisy video stream. Give a concise pipeline and one evaluation measure.</p><p><strong>Answer:</strong> A valid answer is grayscale conversion, moderate Gaussian smoothing, Canny, region-of-interest masking, and line fitting or tracking. Evaluate boundary precision/recall against labeled frames or downstream lane-detection stability and FPS.</p></details>
         <details><summary>20. Failure analysis</summary><p>An inspection system detects every textured label on a product but misses a low-contrast crack. Identify two likely causes and two remedies.</p><p><strong>Answer:</strong> Likely causes include unsuitable thresholds, inadequate contrast, excessive smoothing, or texture responses. Remedies include local contrast enhancement, tuned smoothing and Canny thresholds, region-of-interest restriction, or a learned defect detector after classical preprocessing.</p></details>
         <details class="canny-worked" open><summary>21. Full Canny edge detector: editable 8 × 8 image</summary>
-          <p><strong>Problem:</strong> Use the editable 8 × 8 grayscale image below. The reset example is a soft vertical step, chosen so NMS has one unambiguous maximum. Apply the stated 3 × 3 Sobel kernels with <em>valid</em> correlation (no padding), then calculate <em>Dx</em>, <em>Dy</em>, gradient magnitude <em>G</em>, direction, non-maximum suppression (NMS), hysteresis, and the final edge image. The valid Sobel stages are 6 × 6. Change any input values and recalculate to create a new practice problem.</p>
-          <div class="canny-controls"><div id="canny-input" class="editable-matrix" style="--cols:8" aria-label="Editable 8 by 8 input image"></div><label>Low threshold<input id="canny-low" type="number" value="100" step="1"></label><label>High threshold<input id="canny-high" type="number" value="300" step="1"></label><button id="canny-calculate" class="button button-primary" type="button">Calculate Canny stages</button><button id="canny-reset" class="button button-secondary" type="button">Reset example</button></div>
+          <p><strong>Problem:</strong> Choose a preset or use the editable 8 × 8 grayscale image below. The default is a soft vertical step, chosen so NMS has one unambiguous maximum. First apply the stated 3 × 3 Gaussian kernel using replicated borders so the smoothed image remains 8 × 8. Next apply the Sobel kernels with <em>valid</em> correlation (no padding), then calculate <em>Dx</em>, <em>Dy</em>, gradient magnitude <em>G</em>, gradient direction, non-maximum suppression (NMS), double-threshold hysteresis, and the final edge image. The valid Sobel stages are 6 × 6. Change any input values and recalculate to create a custom practice problem.</p>
+          <div class="canny-controls"><label>Example<select id="canny-example"><option value="vertical">Vertical edge</option><option value="diagonal">Diagonal edge</option><option value="l-shape">L-shaped edge</option><option value="cross">Cross edges</option><option value="custom" disabled>Custom</option></select></label><div id="canny-input" class="editable-matrix" style="--cols:8" aria-label="Editable 8 by 8 input image"></div><label>Low threshold<input id="canny-low" type="number" value="80" min="0" step="1"></label><label>High threshold<input id="canny-high" type="number" value="220" min="0" step="1"></label><button id="canny-calculate" class="button button-primary" type="button">Calculate Canny stages</button><button id="canny-reset" class="button button-secondary" type="button">Reset example</button></div>
           <div id="canny-results" class="canny-results" aria-live="polite"></div>
-          <p><strong>Use these kernels:</strong> Dx = [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]]; Dy = [[-1, -2, -1], [0, 0, 0], [1, 2, 1]]. Direction is rounded to 0°, 45°, 90°, or 135° for NMS. Pixels at or above the high threshold are strong; pixels from the low threshold to below the high threshold are weak and remain only if 8-connected to a strong pixel. The final output uses 255 for an edge and 0 otherwise.</p>
+          <p><strong>Use these kernels:</strong> Gaussian = (1/16) [[1, 2, 1], [2, 4, 2], [1, 2, 1]]; Dx = [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]]; Dy = [[-1, -2, -1], [0, 0, 0], [1, 2, 1]]. Direction is calculated with atan2(Dy, Dx), mapped to [0°, 180°), and quantized to 0°, 45°, 90°, or 135° for NMS. An NMS pixel is suppressed when either required directional neighbor falls outside the 6 × 6 magnitude image. Pixels at or above the high threshold are strong; pixels from the low threshold to below the high threshold are weak and remain only if 8-connected to a strong pixel. The final output uses 255 for an edge and 0 otherwise.</p>
         </details>
       </div>
     </section>
@@ -46,28 +46,51 @@
 </body>
 <script>
 (() => {
-  const initial = [
-    [0,0,10,50,90,100,100,100], [0,0,10,50,90,100,100,100], [0,0,10,50,90,100,100,100], [0,0,10,50,90,100,100,100],
-    [0,0,10,50,90,100,100,100], [0,0,10,50,90,100,100,100], [0,0,10,50,90,100,100,100], [0,0,10,50,90,100,100,100]
-  ];
+  const examples = {
+    vertical: Array.from({length:8}, () => [0,0,10,50,90,100,100,100]),
+    diagonal: Array.from({length:8}, (_, r) => Array.from({length:8}, (_, c) => c-r>=2?100:c-r===1?90:c-r===0?50:c-r===-1?10:0)),
+    'l-shape': Array.from({length:8}, (_, r) => Array.from({length:8}, (_, c) => r>=3&&c>=3?100:0)),
+    cross: Array.from({length:8}, (_, r) => Array.from({length:8}, (_, c) => (r>=3&&r<=4)||(c>=3&&c<=4)?100:0))
+  };
   const input = document.querySelector('#canny-input');
-  initial.flat().forEach((value, index) => {
+  examples.vertical.flat().forEach((value, index) => {
     const cell = document.createElement('input'); cell.type = 'number'; cell.value = value; cell.step = '1'; cell.setAttribute('aria-label', `Input image row ${Math.floor(index / 8) + 1}, column ${(index % 8) + 1}`); input.append(cell);
   });
+  const exampleSelect = document.querySelector('#canny-example');
+  const gaussianKernel = [[1,2,1],[2,4,2],[1,2,1]];
   const kx = [[-1,0,1],[-2,0,2],[-1,0,1]], ky = [[-1,-2,-1],[0,0,0],[1,2,1]];
   const matrix = (title, values, decimals = 0) => `<section><h3>${title}</h3><div class="matrix" style="--cols:${values[0].length}">${values.map(row => `<div class="matrix-row">${row.map(value => `<span>${Number.isFinite(value) ? value.toFixed(decimals) : '—'}</span>`).join('')}</div>`).join('')}</div></section>`;
   function calculate() {
     const image = [...input.querySelectorAll('input')].map(cell => Number(cell.value) || 0).reduce((rows, value, i) => { rows[Math.floor(i / 8)].push(value); return rows; }, Array.from({length:8}, () => []));
-    const dx = [], dy = [], magnitude = [], direction = [];
-    for (let r = 0; r < 6; r++) { dx[r]=[]; dy[r]=[]; magnitude[r]=[]; direction[r]=[]; for (let c = 0; c < 6; c++) { let x=0,y=0; for(let kr=0;kr<3;kr++) for(let kc=0;kc<3;kc++) { x += image[r+kr][c+kc]*kx[kr][kc]; y += image[r+kr][c+kc]*ky[kr][kc]; } dx[r][c]=x; dy[r][c]=y; magnitude[r][c]=Math.hypot(x,y); let a=(Math.atan2(y,x)*180/Math.PI+180)%180; direction[r][c]=a < 22.5 || a >= 157.5 ? 0 : a < 67.5 ? 45 : a < 112.5 ? 90 : 135; }}
+    const sample = (r, c) => image[Math.max(0, Math.min(7, r))][Math.max(0, Math.min(7, c))];
+    const smoothed = Array.from({length:8}, (_, r) => Array.from({length:8}, (_, c) => {
+      let sum = 0;
+      for(let kr=0;kr<3;kr++) for(let kc=0;kc<3;kc++) sum += sample(r+kr-1,c+kc-1)*gaussianKernel[kr][kc];
+      return sum / 16;
+    }));
+    const dx = [], dy = [], magnitude = [], angle = [], direction = [];
+    for (let r = 0; r < 6; r++) { dx[r]=[]; dy[r]=[]; magnitude[r]=[]; angle[r]=[]; direction[r]=[]; for (let c = 0; c < 6; c++) { let x=0,y=0; for(let kr=0;kr<3;kr++) for(let kc=0;kc<3;kc++) { x += smoothed[r+kr][c+kc]*kx[kr][kc]; y += smoothed[r+kr][c+kc]*ky[kr][kc]; } dx[r][c]=x; dy[r][c]=y; magnitude[r][c]=Math.hypot(x,y); const a=(Math.atan2(y,x)*180/Math.PI+180)%180; angle[r][c]=a; direction[r][c]=a < 22.5 || a >= 157.5 ? 0 : a < 67.5 ? 45 : a < 112.5 ? 90 : 135; }}
     const nms = Array.from({length:6}, () => Array(6).fill(0));
-    const neighbour = {0:[[0,-1],[0,1]],45:[[-1,1],[1,-1]],90:[[-1,0],[1,0]],135:[[-1,-1],[1,1]]};
-    for(let r=0;r<6;r++) for(let c=0;c<6;c++) { const [a,b]=neighbour[direction[r][c]]; const p=(rr,cc)=>rr>=0&&rr<6&&cc>=0&&cc<6?magnitude[rr][cc]:0; const m=magnitude[r][c]; if(m>=p(r+a[0],c+a[1]) && m>=p(r+b[0],c+b[1])) nms[r][c]=m; }
-    const low = Number(document.querySelector('#canny-low').value), high = Number(document.querySelector('#canny-high').value); const state=nms.map(row=>row.map(v=>v>=high?2:v>=low?1:0)); const stack=[]; state.forEach((row,r)=>row.forEach((v,c)=>{if(v===2)stack.push([r,c]);})); while(stack.length){const [r,c]=stack.pop(); for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++){const rr=r+dr,cc=c+dc;if(rr>=0&&rr<6&&cc>=0&&cc<6&&state[rr][cc]===1){state[rr][cc]=2;stack.push([rr,cc]);}}} const final=state.map(row=>row.map(v=>v===2?255:0)); const hysteresis=state.map(row=>row.map(v=>v===2?255:v===1?128:0));
-    document.querySelector('#canny-results').innerHTML = `<p><strong>Valid-output size:</strong> 6 × 6. Values are rounded to two decimals where needed. Hysteresis display: 255 = kept/strong, 128 = weak but rejected, 0 = non-edge.</p><div class="canny-grid">${matrix('1. Dx (valid Sobel)',dx)}${matrix('2. Dy (valid Sobel)',dy)}${matrix('3. G = √(Dx² + Dy²)',magnitude,2)}${matrix('4. Direction for NMS (degrees)',direction)}${matrix('5. NMS magnitude',nms,2)}${matrix('6. Hysteresis classification',hysteresis)}${matrix('7. Final edge output',final)}</div>`;
+    const neighbour = {0:[[0,-1],[0,1]],45:[[-1,-1],[1,1]],90:[[-1,0],[1,0]],135:[[-1,1],[1,-1]]};
+    const inBounds = (r, c) => r>=0&&r<6&&c>=0&&c<6;
+    for(let r=0;r<6;r++) for(let c=0;c<6;c++) { const [a,b]=neighbour[direction[r][c]]; const ar=r+a[0],ac=c+a[1],br=r+b[0],bc=c+b[1]; if(!inBounds(ar,ac)||!inBounds(br,bc)) continue; const m=magnitude[r][c]; if(m>=magnitude[ar][ac] && m>=magnitude[br][bc]) nms[r][c]=m; }
+    const low = Number(document.querySelector('#canny-low').value), high = Number(document.querySelector('#canny-high').value);
+    const results = document.querySelector('#canny-results');
+    if(!Number.isFinite(low)||!Number.isFinite(high)||low<0||high<=low){results.innerHTML='<p><strong>Threshold error:</strong> Enter non-negative thresholds with the high threshold greater than the low threshold.</p>';return;}
+    const state=nms.map(row=>row.map(v=>v>=high?2:v>=low?1:0)); const stack=[]; state.forEach((row,r)=>row.forEach((v,c)=>{if(v===2)stack.push([r,c]);})); while(stack.length){const [r,c]=stack.pop(); for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++){const rr=r+dr,cc=c+dc;if(rr>=0&&rr<6&&cc>=0&&cc<6&&state[rr][cc]===1){state[rr][cc]=2;stack.push([rr,cc]);}}} const final=state.map(row=>row.map(v=>v===2?255:0)); const hysteresis=state.map(row=>row.map(v=>v===2?255:v===1?128:0));
+    results.innerHTML = `<p><strong>Smoothed-image size:</strong> 8 × 8. <strong>Valid Sobel-output size:</strong> 6 × 6. Values are rounded to two decimals where needed. Hysteresis display: 255 = strong or connected weak edge, 128 = rejected weak edge, 0 = non-edge.</p><div class="canny-grid">${matrix('1. Gaussian-smoothed image',smoothed,2)}${matrix('2. Dx (valid Sobel)',dx,2)}${matrix('3. Dy (valid Sobel)',dy,2)}${matrix('4. G = √(Dx² + Dy²)',magnitude,2)}${matrix('5. Raw direction (degrees)',angle,2)}${matrix('6. Quantized direction for NMS',direction)}${matrix('7. NMS magnitude',nms,2)}${matrix('8. Hysteresis classification',hysteresis)}${matrix('9. Final edge output',final)}</div>`;
   }
+  function loadExample(name) {
+    const values = examples[name];
+    if(!values) return;
+    [...input.querySelectorAll('input')].forEach((cell, index) => { cell.value = values.flat()[index]; });
+    exampleSelect.value = name;
+    calculate();
+  }
+  exampleSelect.addEventListener('change', () => loadExample(exampleSelect.value));
+  input.addEventListener('input', () => { exampleSelect.value = 'custom'; });
   document.querySelector('#canny-calculate').addEventListener('click', calculate); calculate();
-  document.querySelector('#canny-reset').addEventListener('click', () => { [...input.querySelectorAll('input')].forEach((cell, index) => { cell.value = initial.flat()[index]; }); document.querySelector('#canny-low').value = 100; document.querySelector('#canny-high').value = 300; calculate(); });
+  document.querySelector('#canny-reset').addEventListener('click', () => { document.querySelector('#canny-low').value = 80; document.querySelector('#canny-high').value = 220; loadExample('vertical'); });
 })();
 </script>
 </html>
