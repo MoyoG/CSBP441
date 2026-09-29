@@ -78,7 +78,37 @@
     sobel: {name:'Sobel', x:[[-1,0,1],[-2,0,2],[-1,0,1]], y:[[-1,-2,-1],[0,0,0],[1,2,1]]},
     prewitt: {name:'Prewitt', x:[[-1,0,1],[-1,0,1],[-1,0,1]], y:[[-1,-1,-1],[0,0,0],[1,1,1]]}
   };
-  const matrix = (title, values, decimals = 0) => `<section><h3>${title}</h3><div class="matrix" style="--cols:${values[0].length}">${values.map(row => `<div class="matrix-row">${row.map(value => `<span>${Number.isFinite(value) ? value.toFixed(decimals) : '—'}</span>`).join('')}</div>`).join('')}</div></section>`;
+  const viridis = [[68,1,84],[59,82,139],[33,145,140],[94,201,98],[253,231,37]];
+  const mix = (a, b, t) => a.map((value, i) => Math.round(value+(b[i]-value)*t));
+  const sequentialColor = value => {
+    const scaled = Math.max(0,Math.min(1,value))*(viridis.length-1), index = Math.min(viridis.length-2,Math.floor(scaled));
+    return mix(viridis[index],viridis[index+1],scaled-index);
+  };
+  const cellColors = (value, min, max, palette) => {
+    if(!Number.isFinite(value)) return {background:'#fff',foreground:'#17212b'};
+    let rgb;
+    if(palette==='signed') {
+      const extent=Math.max(Math.abs(min),Math.abs(max))||1, amount=Math.min(1,Math.abs(value)/extent);
+      rgb=value<0?mix([247,247,247],[49,54,149],amount):mix([247,247,247],[165,0,38],amount);
+    } else if(palette==='angle') {
+      const hue=((value%180)+180)%180*2;
+      return {background:`hsl(${hue} 58% 78%)`,foreground:'#17212b'};
+    } else if(palette==='direction') {
+      const colors={0:[216,235,247],45:[183,228,199],90:[255,224,138],135:[244,182,194]}; rgb=colors[value]||[247,249,251];
+    } else if(palette==='hysteresis') {
+      rgb=value===255?[18,132,104]:value===128?[238,174,55]:[240,243,245];
+    } else if(palette==='binary') {
+      rgb=value===255?[0,118,128]:[240,243,245];
+    } else {
+      const range=max-min, normalized=range===0?0:(value-min)/range; rgb=sequentialColor(normalized);
+    }
+    const luminance=(0.299*rgb[0]+0.587*rgb[1]+0.114*rgb[2])/255;
+    return {background:`rgb(${rgb.join(',')})`,foreground:luminance<.52?'#fff':'#17212b'};
+  };
+  const matrix = (title, values, decimals = 0, palette = 'sequential') => {
+    const finite=values.flat().filter(Number.isFinite), min=Math.min(...finite), max=Math.max(...finite);
+    return `<section><h3>${title}</h3><div class="matrix heatmap" style="--cols:${values[0].length}">${values.map(row => `<div class="matrix-row">${row.map(value => { const colors=cellColors(value,min,max,palette); return `<span style="--cell-bg:${colors.background};--cell-fg:${colors.foreground}">${Number.isFinite(value) ? value.toFixed(decimals) : '—'}</span>`; }).join('')}</div>`).join('')}</div></section>`;
+  };
   function calculate() {
     const image = [...input.querySelectorAll('input')].map(cell => Number(cell.value) || 0).reduce((rows, value, i) => { rows[Math.floor(i / 8)].push(value); return rows; }, Array.from({length:8}, () => []));
     const kernel = kernels[kernelSelect.value] || kernels.sobel;
@@ -98,7 +128,7 @@
     const results = document.querySelector('#canny-results');
     if(!Number.isFinite(low)||!Number.isFinite(high)||low<0||high<=low){results.innerHTML='<p><strong>Threshold error:</strong> Enter non-negative thresholds with the high threshold greater than the low threshold.</p>';return;}
     const state=nms.map(row=>row.map(v=>v>=high?2:v>=low?1:0)); const stack=[]; state.forEach((row,r)=>row.forEach((v,c)=>{if(v===2)stack.push([r,c]);})); while(stack.length){const [r,c]=stack.pop(); for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++){const rr=r+dr,cc=c+dc;if(rr>=0&&rr<6&&cc>=0&&cc<6&&state[rr][cc]===1){state[rr][cc]=2;stack.push([rr,cc]);}}} const final=state.map(row=>row.map(v=>v===2?255:0)); const hysteresis=state.map(row=>row.map(v=>v===2?255:v===1?128:0));
-    results.innerHTML = `<p><strong>Selected derivative:</strong> ${kernel.name}. <strong>Smoothed-image size:</strong> 8 × 8. <strong>Valid derivative-output size:</strong> 6 × 6. Values are rounded to two decimals where needed. Hysteresis display: 255 = strong or connected weak edge, 128 = rejected weak edge, 0 = non-edge.</p><div class="canny-grid">${matrix('1. Gaussian-smoothed image',smoothed,2)}${matrix(`2. Dx (valid ${kernel.name})`,dx,2)}${matrix(`3. Dy (valid ${kernel.name})`,dy,2)}${matrix('4. G = √(Dx² + Dy²)',magnitude,2)}${matrix('5. Raw direction (degrees)',angle,2)}${matrix('6. Quantized direction for NMS',direction)}${matrix('7. NMS magnitude',nms,2)}${matrix('8. Hysteresis classification',hysteresis)}${matrix('9. Final edge output',final)}</div>`;
+    results.innerHTML = `<p><strong>Selected derivative:</strong> ${kernel.name}. <strong>Smoothed-image size:</strong> 8 × 8. <strong>Valid derivative-output size:</strong> 6 × 6. Values are rounded to two decimals where needed. Hysteresis display: 255 = strong or connected weak edge, 128 = rejected weak edge, 0 = non-edge.</p><div class="canny-grid">${matrix('1. Gaussian-smoothed image',smoothed,2)}${matrix(`2. Dx (valid ${kernel.name})`,dx,2,'signed')}${matrix(`3. Dy (valid ${kernel.name})`,dy,2,'signed')}${matrix('4. G = √(Dx² + Dy²)',magnitude,2)}${matrix('5. Raw direction (degrees)',angle,2,'angle')}${matrix('6. Quantized direction for NMS',direction,0,'direction')}${matrix('7. NMS magnitude',nms,2)}${matrix('8. Hysteresis classification',hysteresis,0,'hysteresis')}${matrix('9. Final edge output',final,0,'binary')}</div>`;
   }
   function loadExample(name) {
     const values = examples[name];
