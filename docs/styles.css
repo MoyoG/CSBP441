@@ -196,9 +196,11 @@ tbody tr:last-child td { border-bottom: 0; }
 .concept-list details p { margin: 0; padding: 0 17px 17px; color: var(--muted); }
 .canny-worked { grid-column: 1 / -1; }
 .canny-controls { padding: 0 17px 17px; display: grid; gap: 18px; }
-.canny-toolbar { display: grid; grid-template-columns: minmax(155px,1.25fr) minmax(140px,1fr) repeat(2,minmax(110px,.7fr)) auto auto; gap: 12px; align-items: end; }
+.canny-toolbar { display: grid; grid-template-columns: minmax(155px,1.25fr) minmax(140px,1fr) minmax(170px,1fr) repeat(2,minmax(110px,.7fr)) auto auto; gap: 12px; align-items: end; }
 .canny-toolbar > * { min-width: 0; }
 .canny-toolbar button { min-height: 42px; white-space: nowrap; }
+.canny-toolbar .canny-toggle { min-height: 42px; padding: 8px 10px; display: flex; align-items: center; gap: 9px; color: var(--ink); background: #fff; border: 1px solid #b8c6d3; border-radius: 4px; }
+.canny-toolbar .canny-toggle input { width: 18px; height: 18px; min-height: 0; margin: 0; accent-color: var(--teal); }
 .canny-input-panel { min-width: 0; margin: 0; padding: 12px 0 0; border: 0; border-top: 1px solid var(--line); }
 .canny-input-panel legend { padding: 0 10px 0 0; color: var(--navy); font-size: .85rem; font-weight: 800; }
 .canny-input-scroll { max-width: 100%; overflow-x: auto; padding: 6px 2px 10px; }
