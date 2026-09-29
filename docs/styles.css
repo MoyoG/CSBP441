@@ -195,9 +195,13 @@ tbody tr:last-child td { border-bottom: 0; }
 .concept-list summary { padding: 15px 17px; cursor: pointer; font-weight: 750; }
 .concept-list details p { margin: 0; padding: 0 17px 17px; color: var(--muted); }
 .canny-worked { grid-column: 1 / -1; }
-.canny-controls { padding: 0 17px 17px; display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
-.canny-controls .editable-matrix { max-width: 100%; overflow-x: auto; }
-.canny-controls label { width: 130px; }
+.canny-controls { padding: 0 17px 17px; display: grid; gap: 18px; }
+.canny-toolbar { display: grid; grid-template-columns: minmax(155px,1.25fr) minmax(140px,1fr) repeat(2,minmax(110px,.7fr)) auto auto; gap: 12px; align-items: end; }
+.canny-toolbar > * { min-width: 0; }
+.canny-toolbar button { min-height: 42px; white-space: nowrap; }
+.canny-input-panel { min-width: 0; margin: 0; padding: 12px 0 0; border: 0; border-top: 1px solid var(--line); }
+.canny-input-panel legend { padding: 0 10px 0 0; color: var(--navy); font-size: .85rem; font-weight: 800; }
+.canny-input-scroll { max-width: 100%; overflow-x: auto; padding: 6px 2px 10px; }
 .canny-results { padding: 0 17px 17px; }
 .canny-results > p { padding: 0 !important; }
 .canny-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 22px; }
@@ -294,6 +298,7 @@ input, select { min-height: 42px; padding: 8px 10px; color: var(--ink); backgrou
   .student-explanation { max-width: 580px; }
   .flow-guide ol { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .live-service-panel { grid-template-columns: 1fr; }
+  .canny-toolbar, .canny-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
 }
 @media (max-width: 640px) {
   .site-header { padding: 12px 18px; align-items: flex-start; }
@@ -311,6 +316,8 @@ input, select { min-height: 42px; padding: 8px 10px; color: var(--ink); backgrou
   .bank-field-grid { grid-template-columns: 1fr; }
   .bank-matrix-field { grid-column: 1; }
   .manual-actions { align-items: flex-start; flex-direction: column; }
+  .canny-toolbar, .canny-grid { grid-template-columns: 1fr; }
+  .canny-toolbar button { width: 100%; }
   .resource-list a, .notebook-item { grid-template-columns: 1fr; }
   .attendance-callout { align-items: flex-start; flex-direction: column; }
   .attendance-shell { padding: 30px 18px 52px; }
