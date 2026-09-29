@@ -194,6 +194,16 @@ tbody tr:last-child td { border-bottom: 0; }
 .concept-list details { background: var(--surface); border: 1px solid var(--line); border-radius: 5px; }
 .concept-list summary { padding: 15px 17px; cursor: pointer; font-weight: 750; }
 .concept-list details p { margin: 0; padding: 0 17px 17px; color: var(--muted); }
+.canny-worked { grid-column: 1 / -1; }
+.canny-controls { padding: 0 17px 17px; display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+.canny-controls .editable-matrix { max-width: 100%; overflow-x: auto; }
+.canny-controls label { width: 130px; }
+.canny-results { padding: 0 17px 17px; }
+.canny-results > p { padding: 0 !important; }
+.canny-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 22px; }
+.canny-grid section { min-width: 0; overflow-x: auto; border-top: 1px solid var(--line); }
+.canny-grid h3 { margin: 10px 0 0; font-size: .92rem; }
+.canny-grid .matrix { font-size: .78rem; }
 .workflow { display: grid; grid-template-columns: repeat(4,1fr); border-top: 2px solid var(--navy); }
 .workflow div { padding: 17px 18px 8px 0; }
 .workflow span { color: var(--amber); font-weight: 850; }
