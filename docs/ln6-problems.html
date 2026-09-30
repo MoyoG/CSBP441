@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="CSBP441 LN6 worked edge detection problems.">
   <title>LN6 Edge Detection Problems | CSBP441</title>
-  <link rel="stylesheet" href="styles.css?v=20260929c">
+  <link rel="stylesheet" href="styles.css?v=20260930a">
 </head>
 <body>
   <header class="site-header"><a class="course-mark" href="index.html"><span class="course-code">CSBP441</span><span>Applied Computer Vision</span></a><nav class="top-nav" aria-label="Course navigation"><a href="ln6.html">LN6</a><a href="index.html">Course home</a></nav></header>
@@ -91,6 +91,8 @@
     const finite=values.flat().filter(Number.isFinite), min=Math.min(...finite), max=Math.max(...finite);
     return `<section><h3>${title}</h3><div class="matrix heatmap" style="--cols:${values[0].length}">${values.map(row => `<div class="matrix-row">${row.map(value => { const colors=cellColors(value,min,max); return `<span style="--cell-bg:${colors.background};--cell-fg:${colors.foreground}">${Number.isFinite(value) ? value.toFixed(decimals) : '—'}</span>`; }).join('')}</div>`).join('')}</div></section>`;
   };
+  const nmsStencil = (title, values) => `<div class="nms-stencil"><h4>${title}</h4><div class="nms-stencil-matrix">${values.flat().map(value => `<span class="${value===2?'center':value===1?'neighbor':'empty'}">${value===2?'C':value===1?'N':''}</span>`).join('')}</div></div>`;
+  const nmsStencilPanel = () => `<section class="nms-stencil-panel"><h3>6b. NMS directional comparison stencils</h3><p>NMS has no fixed convolution kernel. For each pixel, its quantized gradient direction selects two neighbors (N) to compare with the center magnitude (C).</p><div class="nms-stencil-grid">${nmsStencil('0°: left / right',[[0,0,0],[1,2,1],[0,0,0]])}${nmsStencil('45°: NW / SE',[[1,0,0],[0,2,0],[0,0,1]])}${nmsStencil('90°: up / down',[[0,1,0],[0,2,0],[0,1,0]])}${nmsStencil('135°: NE / SW',[[0,0,1],[0,2,0],[1,0,0]])}</div></section>`;
   function calculate() {
     const image = [...input.querySelectorAll('input')].map(cell => Number(cell.value) || 0).reduce((rows, value, i) => { rows[Math.floor(i / 8)].push(value); return rows; }, Array.from({length:8}, () => []));
     const kernel = kernels[kernelSelect.value] || kernels.sobel;
@@ -111,7 +113,7 @@
     const results = document.querySelector('#canny-results');
     if(!Number.isFinite(low)||!Number.isFinite(high)||low<0||high<=low){results.innerHTML='<p><strong>Threshold error:</strong> Enter non-negative thresholds with the high threshold greater than the low threshold.</p>';return;}
     const state=nms.map(row=>row.map(v=>v>=high?2:v>=low?1:0)); const stack=[]; state.forEach((row,r)=>row.forEach((v,c)=>{if(v===2)stack.push([r,c]);})); while(stack.length){const [r,c]=stack.pop(); for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++){const rr=r+dr,cc=c+dc;if(rr>=0&&rr<6&&cc>=0&&cc<6&&state[rr][cc]===1){state[rr][cc]=2;stack.push([rr,cc]);}}} const final=state.map(row=>row.map(v=>v===2?255:0)); const hysteresis=state.map(row=>row.map(v=>v===2?255:v===1?128:0));
-    results.innerHTML = `<p><strong>Selected derivative:</strong> ${kernel.name}. <strong>Gaussian smoothing:</strong> ${smoothingEnabled?'On':'Off'}. <strong>Working-image size:</strong> 8 × 8. <strong>Valid derivative-output size:</strong> 6 × 6. Values are rounded to two decimals where needed. Hysteresis display: 255 = strong or connected weak edge, 128 = rejected weak edge, 0 = non-edge.</p><div class="canny-grid">${matrix(smoothingEnabled?'1. Gaussian-smoothed image':'1. Working image (smoothing off)',smoothed,2)}${matrix(`2. Dx (valid ${kernel.name})`,dx,2)}${matrix(`3. Dy (valid ${kernel.name})`,dy,2)}${matrix('4. G = √(Dx² + Dy²)',magnitude,2)}${matrix('5. Gradient direction for NMS (degrees)',direction)}${matrix('6. NMS magnitude',nms,2)}${matrix('7. Hysteresis classification',hysteresis)}${matrix('8. Final edge output',final)}</div>`;
+    results.innerHTML = `<p><strong>Selected derivative:</strong> ${kernel.name}. <strong>Gaussian smoothing:</strong> ${smoothingEnabled?'On':'Off'}. <strong>Working-image size:</strong> 8 × 8. <strong>Valid derivative-output size:</strong> 6 × 6. Values are rounded to two decimals where needed. Hysteresis display: 255 = strong or connected weak edge, 128 = rejected weak edge, 0 = non-edge.</p><div class="canny-kernel-grid">${matrix(smoothingEnabled?'1. Gaussian-smoothed image':'1. Working image (smoothing off)',smoothed,2)}${matrix(`Gaussian kernel ${smoothingEnabled?'(applied)':'(not applied)'}: weights / 16`,gaussianKernel)}${matrix(`${kernel.name} Dx kernel`,kernel.x)}${matrix(`${kernel.name} Dy kernel`,kernel.y)}</div><div class="canny-grid">${matrix(`2. Dx (valid ${kernel.name})`,dx,2)}${matrix(`3. Dy (valid ${kernel.name})`,dy,2)}${matrix('4. G = √(Dx² + Dy²)',magnitude,2)}${matrix('5. Gradient direction for NMS (degrees)',direction)}${matrix('6a. NMS magnitude',nms,2)}${nmsStencilPanel()}${matrix('7. Hysteresis classification',hysteresis)}${matrix('8. Final edge output',final)}</div>`;
   }
   function loadExample(name) {
     const values = examples[name];
