@@ -335,6 +335,9 @@ window.COURSE_DATA = {
     notebooks: [
       ["Edge detection laboratory", "Upload an image and compare gradient, Laplacian, LoG, DoG, and Canny results with worked calculations.", "LN6_Edge_Detection.ipynb"]
     ],
+    materials: [
+      ["Lab 2: Full Canny edge-detection calculation", "A 75-minute team worksheet covering Gaussian smoothing, Sobel derivatives, magnitude, direction, non-maximum suppression, double thresholds, hysteresis, and computational cost.", "resources/Lab2_LN6_Canny_Edge_Detection_Student.docx"]
+    ],
     mcqs: [
       {q:"What does a large gradient magnitude usually indicate?",options:["A uniformly bright region","A rapid local intensity change","A guaranteed object boundary","A zero crossing"],answer:1,why:"Gradient magnitude is large where intensity changes rapidly; that change may or may not be a meaningful object boundary."},
       {q:"For the usual Sobel convention, Gx responds most strongly to which boundary?",options:["A vertical boundary","A horizontal boundary","A circular boundary only","No boundary"],answer:0,why:"Gx differentiates from left to right, so it responds to intensity changes across a vertical boundary."},
