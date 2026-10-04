@@ -253,7 +253,8 @@
     if (lecture===3) return generateLN3(type,rng);
     if (lecture===4) return generateLN4(type,rng);
     if (lecture===5) return generateLN5(type,rng,options);
-    return generateLN6(type,rng);
+    if (lecture===6) return generateLN6(type,rng);
+    return generateLN7(type,rng);
   }
 
   function generateLN1(type,rng) {
@@ -403,5 +404,30 @@
     const magnitude=Math.hypot(gx,gy);
     const angle=Math.atan2(gy,gx)*180/Math.PI;
     return {level:"Gradient calculation",title:"Gradient magnitude and direction",question:`<p>At one image location, Gx=${gx} and Gy=${gy}. Calculate gradient magnitude and direction using M=sqrt(Gx²+Gy²) and θ=atan2(Gy,Gx). State whether the gradient points along or across the local edge.</p>`,solution:`<p>M=sqrt(${gx}²+${gy}²)=<strong>${fmt(magnitude)}</strong>.</p><p>θ=atan2(${gy},${gx})=<strong>${fmt(angle)} degrees</strong>.</p><p>The gradient points <strong>across</strong> the local edge, toward greatest intensity increase; the visible edge tangent is perpendicular to it.</p>`};
+  }
+
+  function generateLN7(type,rng) {
+    if (type==="softmax") {
+      const scores=[int(rng,-2,3),int(rng,-2,3),int(rng,-2,3)];
+      const correct=int(rng,0,2);
+      const shifted=scores.map(value=>value-Math.max(...scores));
+      const exponentials=shifted.map(Math.exp);
+      const total=exponentials.reduce((sum,value)=>sum+value,0);
+      const probabilities=exponentials.map(value=>value/total);
+      const loss=-Math.log(probabilities[correct]);
+      return {level:"Multiclass output",title:"Softmax and cross-entropy",question:`<p>The logits are [${scores.join(", ")}], and the correct class is ${correct}. Calculate the softmax probabilities and cross-entropy loss.</p>`,solution:`<p>Subtract max=${Math.max(...scores)} to obtain [${shifted.join(", ")}]. The normalized probabilities are [${probabilities.map(fmt).join(", ")}].</p><p>Loss = −log(p<sub>correct</sub>) = −log(${fmt(probabilities[correct])}) = <strong>${fmt(loss)}</strong>.</p>`};
+    }
+    if (type==="metrics") {
+      const tp=int(rng,50,90),fp=int(rng,5,25),fn=int(rng,5,25);
+      const precision=tp/(tp+fp),recall=tp/(tp+fn),f1=2*precision*recall/(precision+recall);
+      return {level:"Classifier evaluation",title:"Precision, recall, and F1",question:`<p>A binary classifier produces TP=${tp}, FP=${fp}, and FN=${fn}. Calculate precision, recall, and F1.</p>`,solution:`<p>Precision=${tp}/(${tp}+${fp})=<strong>${fmt(precision)}</strong>.</p><p>Recall=${tp}/(${tp}+${fn})=<strong>${fmt(recall)}</strong>.</p><p>F1=2PR/(P+R)=<strong>${fmt(f1)}</strong>.</p>`};
+    }
+    const x=[int(rng,1,9)/10,int(rng,1,9)/10,int(rng,1,9)/10];
+    const w=[int(rng,-10,10)/10,int(rng,-10,10)/10,int(rng,-10,10)/10];
+    const b=int(rng,-5,5)/10;
+    const z=x.reduce((sum,value,index)=>sum+value*w[index],b);
+    const activation=1/(1+Math.exp(-z));
+    const biasTerm=b>=0?` + ${b}`:` − ${Math.abs(b)}`;
+    return {level:"Neuron calculation",title:"Weighted sum and sigmoid activation",question:`<p>For x=[${x.join(", ")}], w=[${w.join(", ")}], and b=${b}, calculate z=x dot w+b and sigmoid(z).</p>`,solution:`<p>z=${x.map((value,index)=>`(${value})(${w[index]})`).join(" + ")}${biasTerm} = <strong>${fmt(z)}</strong>.</p><p>sigmoid(z)=1/(1+e<sup>−z</sup>)=<strong>${fmt(activation)}</strong>.</p>`};
   }
 })();

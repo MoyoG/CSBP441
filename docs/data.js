@@ -384,5 +384,66 @@ window.COURSE_DATA = {
     ],
     problemTypes: [["edgecalc","Gradient calculation"],["canny","Canny threshold and hysteresis"]],
     problemBankLink: "ln6-problems.html"
+  },
+  7: {
+    short: "Neural Networks",
+    title: "Neural Networks for Image Classification",
+    summary: "Build a classifier from an artificial neuron, understand nonlinear activations and loss, then train and evaluate a handwritten-digit model.",
+    image: "assets/ln7.png",
+    objectives: [
+      "Calculate a neuron's weighted sum, bias, and activation.",
+      "Explain why hidden layers need nonlinear activation functions.",
+      "Use softmax and cross-entropy for multiclass classification.",
+      "Train, validate, test, and diagnose a simple image classifier."
+    ],
+    concepts: [
+      ["Artificial neuron", "A neuron calculates z = x dot w + b, then passes z through an activation function. Weights and biases are learned parameters."],
+      ["Nonlinear activation", "Without nonlinear hidden activations, stacked affine layers collapse into one affine transformation and cannot represent nonlinear decisions such as XOR."],
+      ["Softmax output", "Softmax converts ten digit scores into one probability distribution whose values lie between zero and one and sum to one."],
+      ["Cross-entropy loss", "For one-hot labels, cross-entropy is minus the logarithm of the probability assigned to the correct class. Confident wrong predictions receive a large penalty."],
+      ["Data splits", "Training data updates parameters, validation data guides model choices, and the test set measures final generalization after those choices are complete."],
+      ["Evaluation and error analysis", "Accuracy summarizes overall correctness. Precision, recall, F1, confusion matrices, and representative mistakes reveal class-specific behavior."]
+    ],
+    handsOn: [
+      ["Calculate", "Work through z = x dot w + b, sigmoid, softmax, and cross-entropy by hand."],
+      ["Compare", "Plot activation functions and inspect how their derivatives affect learning."],
+      ["Train", "Solve AND and XOR, then train a one-layer ten-class handwritten-digit classifier."],
+      ["Diagnose", "Use learning curves, class metrics, a confusion matrix, and high-confidence mistakes to propose an improvement."]
+    ],
+    recap: "A neural network learns weights and biases from examples. Nonlinear activations create expressive hidden representations, while a task loss and optimizer provide the signal used to update the parameters.",
+    takeaways: [
+      "A neuron first computes z = x dot w + b and then applies an activation function.",
+      "A fully connected layer with n inputs and m outputs contains nm weights and m biases.",
+      "One perceptron can solve linearly separable tasks such as AND but cannot solve XOR.",
+      "Sigmoid is useful for a binary output; softmax is the standard output for mutually exclusive multiclass probabilities.",
+      "Cross-entropy becomes small when the correct class receives high probability and large when it receives low probability.",
+      "Validation performance selects hyperparameters and checkpoints. The test set should remain untouched until final evaluation.",
+      "Confusion matrices and representative errors explain failure patterns that overall accuracy can hide.",
+      "Flattened dense image models ignore spatial locality and grow rapidly with image size, motivating convolutional networks."
+    ],
+    notebooks: [
+      ["Neural networks laboratory", "Calculate activations, solve AND and XOR, train a ten-class digit classifier, and inspect its mistakes.", "LN7_Neural_Networks.ipynb"]
+    ],
+    mcqs: [
+      {q:"What does a neuron calculate before applying its activation function?",options:["Only the bias","A weighted sum plus bias","The confusion matrix","The test accuracy"],answer:1,why:"The pre-activation value is z = x dot w + b."},
+      {q:"Why do multilayer networks need nonlinear hidden activations?",options:["To reduce every output to zero","To prevent stacked layers from collapsing into one affine transformation","To remove all biases","To avoid using training data"],answer:1,why:"A composition of affine layers remains affine unless a nonlinear function separates them."},
+      {q:"Which activation is commonly used in hidden layers?",options:["ReLU","Argmax","Accuracy","Confusion matrix"],answer:0,why:"ReLU is computationally simple and usually supports effective gradient flow."},
+      {q:"What property distinguishes softmax outputs?",options:["They can only be negative","They sum to one across classes","They contain no exponentials","They require a binary task"],answer:1,why:"Softmax normalizes class scores into a probability distribution."},
+      {q:"When is cross-entropy loss large?",options:["The correct class has high probability","The correct class has low probability","Every weight is zero","The image is grayscale"],answer:1,why:"Cross-entropy is minus log of the correct-class probability, so low probability produces high loss."},
+      {q:"Which set should guide checkpoint selection?",options:["Validation set","Final test set","Only mislabeled images","No data"],answer:0,why:"Validation data guides model selection while the test set remains reserved for final evaluation."},
+      {q:"Why can one perceptron not solve XOR?",options:["XOR has too few samples","XOR is not linearly separable","XOR needs no activation","XOR contains ten classes"],answer:1,why:"No single straight decision boundary separates the XOR classes."},
+      {q:"What does the optimizer do?",options:["Uses gradients to update trainable parameters","Creates ground-truth labels","Changes the test set","Converts RGB to grayscale"],answer:0,why:"An optimizer applies gradient information to change weights and biases so the loss decreases."}
+    ],
+    trueFalse: [
+      {q:"A bias is a trainable parameter.",answer:true,why:"Each dense output neuron normally has its own learned bias."},
+      {q:"Stacking linear layers without nonlinear activations creates a nonlinear model.",answer:false,why:"The stacked affine transformations can be combined into one affine transformation."},
+      {q:"Softmax probabilities across all classes sum to one.",answer:true,why:"Softmax normalizes exponentiated class scores by their total."},
+      {q:"A confident wrong prediction should receive a small cross-entropy loss.",answer:false,why:"Low probability on the correct class produces a large loss."},
+      {q:"Training accuracy alone is sufficient to measure generalization.",answer:false,why:"Validation and test performance are needed to estimate behavior on unseen data."},
+      {q:"A confusion matrix can identify which class pairs the model confuses.",answer:true,why:"Off-diagonal cells count specific true-class and predicted-class combinations."},
+      {q:"High recall is important when missing a positive case is costly.",answer:true,why:"Recall decreases when false negatives increase."},
+      {q:"Flattening an image preserves explicit two-dimensional neighborhood structure.",answer:false,why:"Flattening converts spatial coordinates into one long vector and does not explicitly preserve locality."}
+    ],
+    problemTypes: [["neuron","Neuron activation"],["softmax","Softmax and cross-entropy"],["metrics","Precision, recall, and F1"]]
   }
 };
