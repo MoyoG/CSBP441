@@ -371,6 +371,15 @@ input, select { min-height: 42px; padding: 8px 10px; color: var(--ink); backgrou
 
 .network-diagram { margin: 18px 0; padding: 12px; background: #f4f7fa; border: 1px solid #d7e0e8; border-radius: 10px; overflow-x: auto; }
 .network-diagram svg { display: block; width: min(100%, 720px); min-width: 620px; height: auto; margin: 0 auto; }
+.logic-selects { display: flex; gap: 12px; flex-wrap: wrap; margin: 12px 0; }
+.logic-selects label { min-width: 180px; font-size: .82rem; font-weight: 700; color: #173a5e; }
+.logic-selects select { display: block; width: 100%; margin-top: 4px; min-height: 34px; padding: 5px 8px; }
+.logic-parameter-groups { display: grid; grid-template-columns: repeat(2, minmax(240px, 1fr)); gap: 12px; }
+.logic-parameter-groups fieldset { margin: 0; padding: 10px; }
+.logic-parameter-groups legend { font-size: .82rem; font-weight: 700; }
+.logic-grid { display: grid; grid-template-columns: 70px repeat(4, minmax(48px, 1fr)); gap: 5px; align-items: center; font-size: .78rem; }
+.logic-grid input { width: 100%; min-height: 30px; padding: 4px 5px; }
+@media (max-width: 720px) { .logic-parameter-groups { grid-template-columns: 1fr; } }
 .bank-editor .bank-field-grid { grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 8px; }
 .bank-editor .bank-field-grid label { font-size: 0.78rem; gap: 4px; }
 .bank-editor .bank-field-grid input, .bank-editor .bank-field-grid select { min-height: 32px; padding: 5px 7px; font-size: 0.9rem; }

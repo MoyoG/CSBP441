@@ -168,12 +168,13 @@
       }
       const sectionHash=location.hash || "#problem-lab";
       history.replaceState(null,"",`${location.pathname}?${query}${sectionHash}`);
-      const bankEditor = problem.editor?.kind==="bank" ? bankEditorHTML(problem.editor) : "";
+      const bankEditor = problem.editor?.kind==="bank" ? bankEditorHTML(problem.editor) : problem.editor?.kind==="logic" ? logicEditorHTML(problem.editor) : "";
       host.querySelector("#problem").innerHTML = `<div class="problem-meta"><span>LN${ln}</span><span>Seed ${esc(seed)}</span><span>${esc(problem.level)}</span></div><h3>${esc(problem.title)}</h3><div class="problem-body"><div class="dynamic-question">${problem.question}</div>${bankEditor}</div><div class="solution" hidden><h4>Worked solution</h4>${problem.solution}</div>`;
       host.querySelector("#toggle-solution").textContent = "Show solution";
       host.querySelector("#copy-note").textContent = "";
       if (problem.editor?.kind==="filter") bindFilterEditor(problem.editor);
       if (problem.editor?.kind==="bank") bindBankEditor(problem.editor);
+      if (problem.editor?.kind==="logic") bindLogicEditor(problem.editor);
     }
     function bindBankEditor(editor) {
       host.querySelector("#recalculate-bank").addEventListener("click",()=>{
@@ -386,6 +387,16 @@
     const kernel=makeFilterKernel(name,kernelSize);
     return {level:"Boundary handling",title:`${name[0].toUpperCase()+name.slice(1)} filter with three padding modes`,question:`<p>Apply cross-correlation at the top-left pixel using zero, symmetric, and circular padding. Choose a filter, edit the values or dimensions, then compare the three neighborhoods and outputs.</p>${filterEditorHTML(image,kernel,name)}`,solution:filterSolutionHTML(image,kernel),editor:{kind:"filter",filterType:name,image,kernel}};
   }
+  function logicEditorHTML(editor){
+    const v=editor.initial;
+    return `<div class="logic-editor manual-editor"><div class="manual-editor-heading"><div><h4>Forward-pass controls</h4><p>Choose a gate and input pair, then adjust the connection weights or biases.</p></div><span class="input-mode">Editable</span></div><div class="logic-selects"><label>Gate<select id="logic-gate"><option>AND</option><option>OR</option><option>XOR</option></select></label><label>Input pair<select id="logic-input"><option value="00">x₁=0, x₂=0</option><option value="01">x₁=0, x₂=1</option><option value="10">x₁=1, x₂=0</option><option value="11">x₁=1, x₂=1</option></select></label></div><div class="logic-parameter-groups"><fieldset><legend>Input weights</legend><div class="logic-grid"><span></span><strong>h1</strong><strong>h2</strong><strong>h3</strong><strong>h4</strong><span>x₁</span>${v.w1.map((x,i)=>`<input data-logic="w1${i}" type="number" step="0.1" value="${inputFmt(x)}">`).join('')}<span>x₂</span>${v.w2.map((x,i)=>`<input data-logic="w2${i}" type="number" step="0.1" value="${inputFmt(x)}">`).join('')}</div></fieldset><fieldset><legend>Biases and output weights</legend><div class="logic-grid"><span></span><strong>h1</strong><strong>h2</strong><strong>h3</strong><strong>h4</strong><span>Bias b</span>${v.b1.map((x,i)=>`<input data-logic="b1${i}" type="number" step="0.1" value="${inputFmt(x)}">`).join('')}<span>To output</span>${v.wo.map((x,i)=>`<input data-logic="wo${i}" type="number" step="0.1" value="${inputFmt(x)}">`).join('')}<span>Output bias</span><input data-logic="bo" type="number" step="0.1" value="${inputFmt(v.bo)}"><span></span><span></span><span></span><span></span></div></fieldset></div><div class="manual-actions"><button class="button button-primary" id="recalculate-logic">Recalculate forward pass</button><p id="logic-status" aria-live="polite">Preset weights are loaded. You can edit any value.</p></div></div>`;
+  }
+  function bindLogicEditor(editor){
+    const setValue=(id)=>Number(host.querySelector(`[data-logic="${id}"]`).value);
+    const recalculate=()=>{const values={gate:host.querySelector('#logic-gate').value,input:host.querySelector('#logic-input').value,w1:[0,1,2,3].map(i=>setValue(`w1${i}`)),w2:[0,1,2,3].map(i=>setValue(`w2${i}`)),b1:[0,1,2,3].map(i=>setValue(`b1${i}`)),wo:[0,1,2,3].map(i=>setValue(`wo${i}`)),bo:setValue('bo')}; if(Object.values(values).some(v=>Array.isArray(v)?v.some(x=>!Number.isFinite(x)):typeof v==='number'&&!Number.isFinite(v))){host.querySelector('#logic-status').textContent='Enter a valid number in every field.';return;} const rendered=editor.solve(values); host.querySelector('.dynamic-question').innerHTML=rendered.question; host.querySelector('.solution').innerHTML=`<h4>Worked solution</h4>${rendered.solution}`; host.querySelector('.solution').hidden=false; host.querySelector('#toggle-solution').textContent='Hide solution'; host.querySelector('#logic-status').textContent='Forward pass recalculated from your inputs.';};
+    host.querySelector('#recalculate-logic').addEventListener('click',recalculate);
+    host.querySelectorAll('[data-logic], #logic-gate, #logic-input').forEach(x=>x.addEventListener('input',()=>{host.querySelector('#logic-status').textContent='Inputs changed. Recalculate to update the diagram.';}));
+  }
 
   function generateLN6(type,rng) {
     if (type==="canny") {
@@ -440,7 +451,7 @@
       initial.b1.forEach((v,i)=>fields.push({id:`b1${i}`,label:`Hidden ${i+1} bias`,value:v,step:0.1}));
       initial.wo.forEach((v,i)=>fields.push({id:`wo${i}`,label:`Hidden ${i+1} output weight`,value:v,step:0.1}));
       fields.push({id:"bo",label:"Output bias",value:initial.bo,step:0.1});
-      return {level:"Forward pass",title:"Logic-gate forward pass",question: evaluate(initial).question,solution:evaluate(initial).solution,editor:{kind:"bank",fields,solve:(values)=>{const v={gate:values.gate,input:values.input,w1:[values.w10,values.w11,values.w12,values.w13],w2:[values.w20,values.w21,values.w22,values.w23],b1:[values.b10,values.b11,values.b12,values.b13],wo:[values.wo0,values.wo1,values.wo2,values.wo3],bo:values.bo};return evaluate(v);}}};
+      return {level:"Forward pass",title:"Logic-gate forward pass",question: evaluate(initial).question,solution:evaluate(initial).solution,editor:{kind:"logic",initial,fields,solve:(values)=>{const v={gate:values.gate,input:values.input,w1:values.w1,w2:values.w2,b1:values.b1,wo:values.wo,bo:values.bo};return evaluate(v);}}};
     }
     if (type==="parameters") {
       const input=int(rng,16,784), hidden1=int(rng,8,128), hidden2=int(rng,0,96), output=int(rng,2,10);
