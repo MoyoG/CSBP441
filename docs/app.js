@@ -429,7 +429,7 @@
       const gate=pick(rng,["AND","OR","XOR"]), preset=presets[gate];
       const truth={AND:[0,0,0,1],OR:[0,1,1,1],XOR:[0,1,1,0]}[gate];
       const networkSVG=(v,selected)=>{
-        const hiddenY=[55,175,295,415];
+        const hiddenY=[75,195,315,435];
         const edge=(x1,y1,x2,y2,label,accent=false,offset=0,dy=0)=>`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${accent?'#E07A3F':'#9AA9B5'}" stroke-width="2"/><text x="${(x1+x2)/2+offset}" y="${(y1+y2)/2-5+dy}" text-anchor="middle" font-size="11" fill="#17324D">${label}</text>`;
         let edges=''; hiddenY.forEach((y,i)=>{edges+=edge(115,145,320,y,fmt(v.w1[i]),false,-18,[-18,-8,8,18][i]);edges+=edge(115,325,320,y,fmt(v.w2[i]),false,18,[18,8,-8,-18][i]);edges+=edge(390,y,610,235,fmt(v.wo[i]),true,(i-1.5)*14);});
         const chosen=selected||[0,0]; const hidden= v.w1.map((w,j)=>Math.max(0,chosen[0]*w+chosen[1]*v.w2[j]+v.b1[j])); const z=hidden.reduce((sum,h,j)=>sum+h*v.wo[j],v.bo); const p=1/(1+Math.exp(-z)); const activationLabels=hidden.map((value,i)=>`<text x="355" y="${hiddenY[i]+15}" text-anchor="middle" font-size="10" fill="#17324D">a=${fmt(value)}</text>`).join('');
