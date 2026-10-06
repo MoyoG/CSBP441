@@ -444,6 +444,6 @@ window.COURSE_DATA = {
       {q:"High recall is important when missing a positive case is costly.",answer:true,why:"Recall decreases when false negatives increase."},
       {q:"Flattening an image preserves explicit two-dimensional neighborhood structure.",answer:false,why:"Flattening converts spatial coordinates into one long vector and does not explicitly preserve locality."}
     ],
-    problemTypes: [["neuron","Neuron activation"],["parameters","Dense-layer parameter count"],["softmax","Softmax and cross-entropy"],["metrics","Precision, recall, and F1"]]
+    problemTypes: [["neuron","Neuron activation"],["parameters","Dense-layer parameter count"],["forwardpass","Logic-gate forward pass"],["softmax","Softmax and cross-entropy"],["metrics","Precision, recall, and F1"]]
   }
 };

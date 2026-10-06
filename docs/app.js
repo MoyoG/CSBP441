@@ -407,6 +407,33 @@
   }
 
   function generateLN7(type,rng) {
+    if(type==="forwardpass") {
+      const presets={
+        AND:{w1:[1,1,0,0],w2:[1,1,0,0],b1:[-1.5,0,0,0],wo:[12,0,0,0],bo:-4},
+        OR:{w1:[1,1,0,0],w2:[1,1,0,0],b1:[-0.5,0,0,0],wo:[12,0,0,0],bo:-4},
+        XOR:{w1:[1,1,0,0],w2:[1,1,0,0],b1:[-0.5,-1.5,0,0],wo:[12,-36,0,0],bo:-4}
+      };
+      const gate=pick(rng,["AND","OR","XOR"]), preset=presets[gate];
+      const truth={AND:[0,0,0,1],OR:[0,1,1,1],XOR:[0,1,1,0]}[gate];
+      const evaluate=(v)=>{
+        const rows=[[0,0],[0,1],[1,0],[1,1]].map((x,i)=>{
+          const hidden=v.w1.map((w,j)=>Math.max(0,x[0]*w+x[1]*v.w2[j]+v.b1[j]));
+          const z=hidden.reduce((sum,h,j)=>sum+h*v.wo[j],v.bo);
+          const p=1/(1+Math.exp(-z));
+          return {x,hidden,z,p,pred:p>=0.5?1:0,target:truth[i]};
+        });
+        const table=rows.map(r=>`<tr><td>[${r.x.join(", ")}]</td><td>[${r.hidden.map(v=>fmt(v)).join(", ")}]</td><td>${fmt(r.z)}</td><td>${fmt(r.p)}</td><td>${r.pred}</td><td>${r.target}</td></tr>`).join("");
+        return {question:`<p>Use a fixed network with 2 inputs, 4 hidden ReLU neurons, and 1 sigmoid output. The selected gate is <strong>${v.gate}</strong>. Compute the forward pass for [0,0], [0,1], [1,0], and [1,1].</p><p>Classify the output as 1 when sigmoid(z) ≥ 0.5.</p>`,solution:`<table class="problem-table"><thead><tr><th>Input</th><th>Hidden activations</th><th>Output z</th><th>Sigmoid</th><th>Predicted</th><th>Target</th></tr></thead><tbody>${table}</tbody></table><p>The editable weights and biases produce ${rows.filter(r=>r.pred===r.target).length}/4 correct outputs. Change one weight or bias, recalculate, and observe which input combination changes first.</p>`};
+      };
+      const initial={gate,w1:preset.w1,w2:preset.w2,b1:preset.b1,wo:preset.wo,bo:preset.bo};
+      const fields=[{id:"gate",label:"Logic gate",type:"select",value:gate,options:[["AND","AND"],["OR","OR"],["XOR","XOR"]]}];
+      initial.w1.forEach((v,i)=>fields.push({id:`w1${i}`,label:`Input 1 weight to hidden ${i+1}`,value:v,step:0.1}));
+      initial.w2.forEach((v,i)=>fields.push({id:`w2${i}`,label:`Input 2 weight to hidden ${i+1}`,value:v,step:0.1}));
+      initial.b1.forEach((v,i)=>fields.push({id:`b1${i}`,label:`Hidden ${i+1} bias`,value:v,step:0.1}));
+      initial.wo.forEach((v,i)=>fields.push({id:`wo${i}`,label:`Hidden ${i+1} output weight`,value:v,step:0.1}));
+      fields.push({id:"bo",label:"Output bias",value:initial.bo,step:0.1});
+      return {level:"Forward pass",title:"Logic-gate forward pass",question: evaluate(initial).question,solution:evaluate(initial).solution,editor:{kind:"bank",fields,solve:(values)=>{const v={gate:values.gate,w1:[values.w10,values.w11,values.w12,values.w13],w2:[values.w20,values.w21,values.w22,values.w23],b1:[values.b10,values.b11,values.b12,values.b13],wo:[values.wo0,values.wo1,values.wo2,values.wo3],bo:values.bo};return evaluate(v);}}};
+    }
     if (type==="parameters") {
       const input=int(rng,16,784), hidden1=int(rng,8,128), hidden2=int(rng,0,96), output=int(rng,2,10);
       const layers=hidden2>0?[input,hidden1,hidden2,output]:[input,hidden1,output];
