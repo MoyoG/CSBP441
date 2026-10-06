@@ -146,6 +146,7 @@
     host.innerHTML = `<div class="generator-controls"><label>Problem type<select id="problem-type">${data.problemTypes.map(x=>`<option value="${x[0]}" ${x[0]===startingType?"selected":""}>${esc(x[1])}</option>`).join("")}</select></label><label>Variant seed<input id="problem-seed" value="${esc(startingSeed)}" maxlength="30"></label><button class="button button-primary" id="generate">Generate variant</button></div><div class="problem-output"><div id="problem"></div><div class="button-row"><button class="button button-secondary" id="toggle-solution">Show solution</button><button class="button button-secondary" id="copy-link">Copy variant link</button><button class="button button-secondary" id="new-seed">New seed</button></div><p class="copy-note" id="copy-note" aria-live="polite"></p></div>`;
     host.querySelector("#generate").addEventListener("click", generate);
     host.querySelector("#problem-type").addEventListener("change", generate);
+    host.querySelector("#problem-seed").addEventListener("change", generate);
     host.querySelector("#toggle-solution").addEventListener("click", toggleSolution);
     host.querySelector("#new-seed").addEventListener("click", ()=>{ host.querySelector("#problem-seed").value=String(Math.floor(Math.random()*9000000)+1000000); generate(); });
     host.querySelector("#copy-link").addEventListener("click", copyLink);
@@ -394,7 +395,9 @@
   function bindLogicEditor(editor){
     const recalculate=()=>{const gate=host.querySelector('#logic-gate').value; const p=editor.presets[gate]; const values={gate,input:host.querySelector('#logic-input').value,w1:p.w1,w2:p.w2,b1:p.b1,wo:p.wo,bo:p.bo}; const rendered=editor.solve(values); host.querySelector('.dynamic-question').innerHTML=rendered.question; host.querySelector('.solution').innerHTML=`<h4>Worked solution</h4>${rendered.solution}`; host.querySelector('.solution').hidden=false; host.querySelector('#toggle-solution').textContent='Hide solution'; host.querySelector('#logic-status').textContent='Diagram and output updated.';};
     host.querySelector('#logic-gate').addEventListener('change',recalculate);
+    host.querySelector('#logic-gate').addEventListener('input',recalculate);
     host.querySelector('#logic-input').addEventListener('change',recalculate);
+    host.querySelector('#logic-input').addEventListener('input',recalculate);
   }
 
   function generateLN6(type,rng) {
