@@ -407,6 +407,17 @@
   }
 
   function generateLN7(type,rng) {
+    if (type==="parameters") {
+      const input=int(rng,16,784), hidden1=int(rng,8,128), hidden2=int(rng,0,96), output=int(rng,2,10);
+      const layers=hidden2>0?[input,hidden1,hidden2,output]:[input,hidden1,output];
+      const rows=[]; let total=0;
+      for(let i=0;i<layers.length-1;i++) {
+        const weights=layers[i]*layers[i+1], biases=layers[i+1], subtotal=weights+biases;
+        rows.push(`<tr><td>${i+1}</td><td>${layers[i]}</td><td>${layers[i+1]}</td><td>${weights.toLocaleString()}</td><td>${biases.toLocaleString()}</td><td>${subtotal.toLocaleString()}</td></tr>`);
+        total+=subtotal;
+      }
+      return {level:"Hand calculation",title:"Count the trainable parameters",question:`<p>For the dense network <strong>${layers.join(" → ")}</strong>, calculate the total number of trainable parameters. Include one bias for every output neuron.</p><p>Use <strong>parameters = inputs × neurons + neurons</strong> for each layer.</p>`,solution:`<p>Layer-by-layer calculation:</p><table class="problem-table"><thead><tr><th>Layer</th><th>Inputs</th><th>Neurons</th><th>Weights</th><th>Biases</th><th>Total</th></tr></thead><tbody>${rows.join("")}</tbody></table><p><strong>Total trainable parameters = ${total.toLocaleString()}</strong>.</p><p>Adding a hidden layer can improve representational capacity, but it also increases the number of parameters and may increase overfitting risk.</p>`};
+    }
     if (type==="softmax") {
       const scores=[int(rng,-2,3),int(rng,-2,3),int(rng,-2,3)];
       const correct=int(rng,0,2);
