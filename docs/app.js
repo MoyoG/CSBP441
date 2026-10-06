@@ -393,9 +393,12 @@
   }
   function bindLogicEditor(editor){
     const setValue=(id)=>Number(host.querySelector(`[data-logic="${id}"]`).value);
+    const loadPreset=(gate)=>{const p=editor.presets[gate]; p.w1.forEach((x,i)=>host.querySelector(`[data-logic="w1${i}"]`).value=x); p.w2.forEach((x,i)=>host.querySelector(`[data-logic="w2${i}"]`).value=x); p.b1.forEach((x,i)=>host.querySelector(`[data-logic="b1${i}"]`).value=x); p.wo.forEach((x,i)=>host.querySelector(`[data-logic="wo${i}"]`).value=x); host.querySelector('[data-logic="bo"]').value=p.bo;};
     const recalculate=()=>{const values={gate:host.querySelector('#logic-gate').value,input:host.querySelector('#logic-input').value,w1:[0,1,2,3].map(i=>setValue(`w1${i}`)),w2:[0,1,2,3].map(i=>setValue(`w2${i}`)),b1:[0,1,2,3].map(i=>setValue(`b1${i}`)),wo:[0,1,2,3].map(i=>setValue(`wo${i}`)),bo:setValue('bo')}; if(Object.values(values).some(v=>Array.isArray(v)?v.some(x=>!Number.isFinite(x)):typeof v==='number'&&!Number.isFinite(v))){host.querySelector('#logic-status').textContent='Enter a valid number in every field.';return;} const rendered=editor.solve(values); host.querySelector('.dynamic-question').innerHTML=rendered.question; host.querySelector('.solution').innerHTML=`<h4>Worked solution</h4>${rendered.solution}`; host.querySelector('.solution').hidden=false; host.querySelector('#toggle-solution').textContent='Hide solution'; host.querySelector('#logic-status').textContent='Forward pass recalculated from your inputs.';};
     host.querySelector('#recalculate-logic').addEventListener('click',recalculate);
-    host.querySelectorAll('[data-logic], #logic-gate, #logic-input').forEach(x=>x.addEventListener('input',()=>{host.querySelector('#logic-status').textContent='Inputs changed. Recalculate to update the diagram.';}));
+    host.querySelector('#logic-gate').addEventListener('change',()=>{loadPreset(host.querySelector('#logic-gate').value); recalculate();});
+    host.querySelector('#logic-input').addEventListener('change',recalculate);
+    host.querySelectorAll('[data-logic]').forEach(x=>x.addEventListener('input',()=>{host.querySelector('#logic-status').textContent='Inputs changed. Recalculate to update the diagram.';}));
   }
 
   function generateLN6(type,rng) {
@@ -451,7 +454,7 @@
       initial.b1.forEach((v,i)=>fields.push({id:`b1${i}`,label:`Hidden ${i+1} bias`,value:v,step:0.1}));
       initial.wo.forEach((v,i)=>fields.push({id:`wo${i}`,label:`Hidden ${i+1} output weight`,value:v,step:0.1}));
       fields.push({id:"bo",label:"Output bias",value:initial.bo,step:0.1});
-      return {level:"Forward pass",title:"Logic-gate forward pass",question: evaluate(initial).question,solution:evaluate(initial).solution,editor:{kind:"logic",initial,fields,solve:(values)=>{const v={gate:values.gate,input:values.input,w1:values.w1,w2:values.w2,b1:values.b1,wo:values.wo,bo:values.bo};return evaluate(v);}}};
+      return {level:"Forward pass",title:"Logic-gate forward pass",question: evaluate(initial).question,solution:evaluate(initial).solution,editor:{kind:"logic",initial,presets,fields,solve:(values)=>{const v={gate:values.gate,input:values.input,w1:values.w1,w2:values.w2,b1:values.b1,wo:values.wo,bo:values.bo};return evaluate(v);}}};
     }
     if (type==="parameters") {
       const input=int(rng,16,784), hidden1=int(rng,8,128), hidden2=int(rng,0,96), output=int(rng,2,10);
