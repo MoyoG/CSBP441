@@ -422,7 +422,8 @@ window.COURSE_DATA = {
       "Flattened dense image models ignore spatial locality and grow rapidly with image size, motivating convolutional networks."
     ],
     notebooks: [
-      ["Neural networks laboratory", "Calculate activations, solve AND and XOR, train a ten-class digit classifier, and inspect its mistakes.", "LN7_Neural_Networks.ipynb"]
+      ["Neural networks laboratory", "Calculate activations, solve AND and XOR, train a ten-class digit classifier, and inspect its mistakes.", "LN7_Neural_Networks.ipynb"],
+      ["Lab 3 — NN versus CNN on 50 ImageNet images", "Assignment: train a flattened fully connected NN and a CNN on the same 10 ImageNet classes with 5 images per class, then compare parameters, accuracy, learning curves, errors, and feature maps.", "Lab3_NN_vs_CNN_ImageNet_50.ipynb"]
     ],
     mcqs: [
       {q:"What does a neuron calculate before applying its activation function?",options:["Only the bias","A weighted sum plus bias","The confusion matrix","The test accuracy"],answer:1,why:"The pre-activation value is z = x dot w + b."},
