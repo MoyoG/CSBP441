@@ -175,7 +175,7 @@
       host.querySelector("#copy-note").textContent = "";
       if (problem.editor?.kind==="filter") bindFilterEditor(problem.editor);
       if (problem.editor?.kind==="bank") bindBankEditor(problem.editor);
-      if (problem.editor?.kind==="logic") bindLogicEditor(problem.editor);
+      if (problem.editor?.kind==="logic") bindLogicEditor(problem.editor, host);
     }
     function bindBankEditor(editor) {
       host.querySelector("#recalculate-bank").addEventListener("click",()=>{
@@ -392,7 +392,7 @@
     const v=editor.initial;
     return `<div class="logic-editor manual-editor"><div class="manual-editor-heading"><div><h4>Forward-pass controls</h4><p>Choose a gate and input pair. The preset weights and biases are fixed for this exercise.</p></div><span class="input-mode">Fixed network</span></div><div class="logic-selects"><label>Gate<select id="logic-gate"><option ${v.gate==='AND'?'selected':''}>AND</option><option ${v.gate==='OR'?'selected':''}>OR</option><option ${v.gate==='XOR'?'selected':''}>XOR</option></select></label><label>Input pair<select id="logic-input"><option value="00">x₁=0, x₂=0</option><option value="01">x₁=0, x₂=1</option><option value="10">x₁=1, x₂=0</option><option value="11">x₁=1, x₂=1</option></select></label></div><div class="fixed-weights"><strong>Fixed weights and biases for ${esc(v.gate)}</strong><span>Input 1 → hidden: [${v.w1.map(fmt).join(', ')}]</span><span>Input 2 → hidden: [${v.w2.map(fmt).join(', ')}]</span><span>Hidden biases: [${v.b1.map(fmt).join(', ')}]</span><span>Hidden → output: [${v.wo.map(fmt).join(', ')}]</span><span>Output bias: ${fmt(v.bo)}</span></div><div class="manual-actions"><p id="logic-status" aria-live="polite">Choose a gate or input pair to update the diagram.</p></div></div>`;
   }
-  function bindLogicEditor(editor){
+  function bindLogicEditor(editor, host){
     const recalculate=()=>{const gate=host.querySelector('#logic-gate').value; const p=editor.presets[gate]; const values={gate,input:host.querySelector('#logic-input').value,w1:p.w1,w2:p.w2,b1:p.b1,wo:p.wo,bo:p.bo}; const rendered=editor.solve(values); host.querySelector('.dynamic-question').innerHTML=rendered.question; host.querySelector('.solution').innerHTML=`<h4>Worked solution</h4>${rendered.solution}`; host.querySelector('.solution').hidden=false; host.querySelector('#toggle-solution').textContent='Hide solution'; host.querySelector('#logic-status').textContent='Diagram and output updated.';};
     host.querySelector('#logic-gate').addEventListener('change',recalculate);
     host.querySelector('#logic-gate').addEventListener('input',recalculate);
