@@ -438,14 +438,15 @@
       const evaluate=(v)=>{
         const targetTruth={AND:[0,0,0,1],OR:[0,1,1,1],XOR:[0,1,1,0]}[v.gate];
         const rows=[[0,0],[0,1],[1,0],[1,1]].map((x,i)=>{
-          const hidden=v.w1.map((w,j)=>Math.max(0,x[0]*w+x[1]*v.w2[j]+v.b1[j]));
+          const preactivation=v.w1.map((w,j)=>x[0]*w+x[1]*v.w2[j]+v.b1[j]);
+          const hidden=preactivation.map(z=>Math.max(0,z));
           const z=hidden.reduce((sum,h,j)=>sum+h*v.wo[j],v.bo);
           const p=1/(1+Math.exp(-z));
-          return {x,hidden,z,p,pred:p>=0.5?1:0,target:targetTruth[i]};
+          return {x,preactivation,hidden,z,p,pred:p>=0.5?1:0,target:targetTruth[i]};
         });
-        const table=rows.map(r=>`<tr><td>[${r.x.join(", ")}]</td><td>[${r.hidden.map(v=>fmt(v)).join(", ")}]</td><td>${fmt(r.z)}</td><td>${fmt(r.p)}</td><td>${r.pred}</td><td>${r.target}</td></tr>`).join("");
+        const table=rows.map(r=>`<tr><td>[${r.x.join(", ")}]</td><td>[${r.preactivation.map(v=>fmt(v)).join(", ")}]</td><td>[${r.hidden.map(v=>fmt(v)).join(", ")}]</td><td>${fmt(r.z)}</td><td>${fmt(r.p)}</td><td>${r.pred}</td><td>${r.target}</td></tr>`).join("");
         const selected=String(v.input).split('').map(Number);
-        return {question:`<p>Use a fixed network with 2 inputs, 4 hidden ReLU neurons, and 1 sigmoid output. The selected gate is <strong>${v.gate}</strong>. Choose one input combination and inspect its forward pass.</p>${networkSVG(v,selected)}<p>Classify the output as 1 when sigmoid(z) ≥ 0.5.</p>`,solution:`<table class="problem-table"><thead><tr><th>Input</th><th>Hidden activations</th><th>Output z</th><th>Sigmoid</th><th>Predicted</th><th>Target</th></tr></thead><tbody>${table}</tbody></table><p>The editable weights and biases produce ${rows.filter(r=>r.pred===r.target).length}/4 correct outputs. Change one weight or bias, recalculate, and observe which input combination changes first.</p>`};
+        return {question:`<p>Use a fixed network with 2 inputs, 4 hidden ReLU neurons, and 1 sigmoid output. The selected gate is <strong>${v.gate}</strong>. Choose one input combination and inspect its forward pass.</p>${networkSVG(v,selected)}<p>Classify the output as 1 when sigmoid(z) ≥ 0.5.</p>`,solution:`<table class="problem-table"><thead><tr><th>Input</th><th>Σ(xw)+b</th><th>Hidden activations</th><th>Output z</th><th>Sigmoid</th><th>Predicted</th><th>Target</th></tr></thead><tbody>${table}</tbody></table><p>The fixed weights and biases produce ${rows.filter(r=>r.pred===r.target).length}/4 correct outputs. The new column shows each hidden neuron's value before ReLU.</p>`};
       };
       const initial={gate,input:"00",w1:preset.w1,w2:preset.w2,b1:preset.b1,wo:preset.wo,bo:preset.bo};
       const fields=[{id:"gate",label:"Gate",type:"select",value:gate,options:[["AND","AND"],["OR","OR"],["XOR","XOR"]]},{id:"input",label:"Input pair",type:"select",value:"00",options:[["00","x₁=0, x₂=0"],["01","x₁=0, x₂=1"],["10","x₁=1, x₂=0"],["11","x₁=1, x₂=1"]]}];
