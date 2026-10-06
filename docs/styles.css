@@ -379,6 +379,8 @@ input, select { min-height: 42px; padding: 8px 10px; color: var(--ink); backgrou
 .logic-parameter-groups legend { font-size: .82rem; font-weight: 700; }
 .logic-grid { display: grid; grid-template-columns: 70px repeat(4, minmax(48px, 1fr)); gap: 5px; align-items: center; font-size: .78rem; }
 .logic-grid input { width: 100%; min-height: 30px; padding: 4px 5px; }
+.fixed-weights { display: grid; grid-template-columns: repeat(2, minmax(220px, 1fr)); gap: 6px 16px; padding: 10px 12px; background: #f4f7fa; border: 1px solid #d7e0e8; border-radius: 8px; font-size: .82rem; }
+.fixed-weights strong { grid-column: 1 / -1; color: #173a5e; }
 @media (max-width: 720px) { .logic-parameter-groups { grid-template-columns: 1fr; } }
 .bank-editor .bank-field-grid { grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 8px; }
 .bank-editor .bank-field-grid label { font-size: 0.78rem; gap: 4px; }
