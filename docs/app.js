@@ -437,11 +437,12 @@
         return `<div class="network-diagram"><svg viewBox="0 0 720 400" role="img" aria-label="Two input neurons connected to four hidden ReLU neurons and one sigmoid output neuron"><text x="115" y="25" text-anchor="middle" font-size="16" font-weight="700" fill="#17324D">Inputs</text><text x="355" y="25" text-anchor="middle" font-size="16" font-weight="700" fill="#17324D">Hidden layer</text><text x="610" y="25" text-anchor="middle" font-size="16" font-weight="700" fill="#17324D">Output</text>${edges}<circle cx="115" cy="145" r="30" fill="#E4F4F0" stroke="#2A9D8F" stroke-width="3"/><text x="115" y="150" text-anchor="middle" font-size="15" font-weight="700" fill="#17324D">x₁=${chosen[0]}</text><circle cx="115" cy="325" r="30" fill="#E4F4F0" stroke="#2A9D8F" stroke-width="3"/><text x="115" y="330" text-anchor="middle" font-size="15" font-weight="700" fill="#17324D">x₂=${chosen[1]}</text>${hiddenY.map((y,i)=>`<circle cx="355" cy="${y}" r="35" fill="#E8F2FB" stroke="#2E75B6" stroke-width="3"/><text x="355" y="${y-7}" text-anchor="middle" font-size="14" font-weight="700" fill="#17324D">h${i+1}</text><text x="355" y="${y+7}" text-anchor="middle" font-size="11" fill="#17324D">ReLU</text><text x="355" y="${y+21}" text-anchor="middle" font-size="10" fill="#5B6770">b=${fmt(v.b1[i])}</text>`).join('')}<circle cx="645" cy="195" r="45" fill="#FFF0E8" stroke="#E07A3F" stroke-width="3"/><text x="645" y="184" text-anchor="middle" font-size="14" font-weight="700" fill="#17324D">ŷ=${fmt(p)}</text><text x="645" y="201" text-anchor="middle" font-size="11" fill="#17324D">sigmoid</text><text x="645" y="216" text-anchor="middle" font-size="10" fill="#5B6770">b=${fmt(v.bo)}</text><text x="645" y="382" text-anchor="middle" font-size="13" font-weight="700" fill="#E07A3F">output = ${p>=0.5?1:0}</text></svg></div>`;
       };
       const evaluate=(v)=>{
+        const targetTruth={AND:[0,0,0,1],OR:[0,1,1,1],XOR:[0,1,1,0]}[v.gate];
         const rows=[[0,0],[0,1],[1,0],[1,1]].map((x,i)=>{
           const hidden=v.w1.map((w,j)=>Math.max(0,x[0]*w+x[1]*v.w2[j]+v.b1[j]));
           const z=hidden.reduce((sum,h,j)=>sum+h*v.wo[j],v.bo);
           const p=1/(1+Math.exp(-z));
-          return {x,hidden,z,p,pred:p>=0.5?1:0,target:truth[i]};
+          return {x,hidden,z,p,pred:p>=0.5?1:0,target:targetTruth[i]};
         });
         const table=rows.map(r=>`<tr><td>[${r.x.join(", ")}]</td><td>[${r.hidden.map(v=>fmt(v)).join(", ")}]</td><td>${fmt(r.z)}</td><td>${fmt(r.p)}</td><td>${r.pred}</td><td>${r.target}</td></tr>`).join("");
         const selected=String(v.input).split('').map(Number);
