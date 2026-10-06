@@ -368,3 +368,6 @@ input, select { min-height: 42px; padding: 8px 10px; color: var(--ink); backgrou
   .phone-content { padding: 28px 20px; }
   footer { align-items: flex-start; flex-direction: column; justify-content: center; }
 }
+
+.network-diagram { margin: 18px 0; padding: 12px; background: #f4f7fa; border: 1px solid #d7e0e8; border-radius: 10px; overflow-x: auto; }
+.network-diagram svg { display: block; width: min(100%, 720px); min-width: 620px; height: auto; margin: 0 auto; }
