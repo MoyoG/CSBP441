@@ -425,6 +425,10 @@ window.COURSE_DATA = {
       ["Neural networks laboratory", "Calculate activations, solve AND and XOR, train a ten-class digit classifier, and inspect its mistakes.", "LN7_Neural_Networks.ipynb"],
       ["Lab 3 — NN versus CNN on 50 images per class", "Assignment: train a flattened fully connected NN and a CNN on the same 10 ImageNet classes with 50 images per class (500 total), then compare parameters, accuracy, learning curves, errors, and feature maps.", "Lab3_NN_vs_CNN_ImageNet_50.ipynb"]
     ],
+    materialsTitle: "Lab 3 NN and CNN image classification assignment",
+    materials: [
+      ["Lab 3 student worksheet", "Use this worksheet with the NN versus CNN Colab to record calculations, model results, error analysis, and a supported conclusion.", "resources/Lab3_NN_vs_CNN_Imagenette_Student.docx"]
+    ],
     mcqs: [
       {q:"What does a neuron calculate before applying its activation function?",options:["Only the bias","A weighted sum plus bias","The confusion matrix","The test accuracy"],answer:1,why:"The pre-activation value is z = x dot w + b."},
       {q:"Why do multilayer networks need nonlinear hidden activations?",options:["To reduce every output to zero","To prevent stacked layers from collapsing into one affine transformation","To remove all biases","To avoid using training data"],answer:1,why:"A composition of affine layers remains affine unless a nonlinear function separates them."},
