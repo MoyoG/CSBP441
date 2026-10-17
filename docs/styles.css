@@ -23,6 +23,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .xor-controls { padding: 22px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
 .network-diagram { margin: 18px 0 22px; padding: 14px; overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
 .network-diagram svg { display: block; width: 100%; min-width: 720px; height: auto; }
+.network-diagram::after { content: "Biases: b₁ at h₁  ·  b₂ at h₂  ·  bₒ at ŷ"; display: block; margin: 4px 0 0; color: var(--muted); text-align: center; font-size: .85rem; }
 .equation-list { margin: 18px 0 24px; padding: 16px 18px; background: #eef5f7; border-left: 4px solid var(--teal); border-radius: 8px; font-family: Georgia, "Times New Roman", serif; line-height: 1.9; }
 .xor-parameter-grid { display: grid; grid-template-columns: repeat(5, minmax(90px, 1fr)); gap: 14px; margin-bottom: 20px; }
 .xor-parameter-grid label { color: var(--muted); font-size: .86rem; font-weight: 700; }
