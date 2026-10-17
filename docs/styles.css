@@ -20,6 +20,17 @@ button, input, select { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
 :focus-visible { outline: 3px solid rgba(0,111,214,.35); outline-offset: 3px; }
 
+.xor-controls { padding: 22px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+.xor-parameter-grid { display: grid; grid-template-columns: repeat(5, minmax(90px, 1fr)); gap: 14px; margin-bottom: 20px; }
+.xor-parameter-grid label { color: var(--muted); font-size: .86rem; font-weight: 700; }
+.xor-parameter-grid input { display: block; width: 100%; margin-top: 5px; padding: 9px 8px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink); background: #fff; }
+.table-scroll { overflow-x: auto; margin: 12px 0 24px; }
+.results-table { width: 100%; min-width: 760px; border-collapse: collapse; background: var(--surface); font-size: .88rem; }
+.results-table th, .results-table td { padding: 9px 10px; border: 1px solid var(--line); text-align: center; white-space: nowrap; }
+.results-table th { background: var(--navy); color: #fff; }
+.results-table tbody tr:nth-child(even) { background: #f1f5f8; }
+@media (max-width: 800px) { .xor-parameter-grid { grid-template-columns: repeat(2, minmax(100px, 1fr)); } }
+
 .site-header { min-height: 66px; padding: 0 5vw; display: flex; align-items: center; justify-content: space-between; gap: 24px; background: var(--surface); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 20; }
 .course-mark { display: flex; align-items: baseline; gap: 10px; text-decoration: none; font-weight: 650; }
 .course-code { color: var(--navy); font-size: 1.08rem; font-weight: 800; }

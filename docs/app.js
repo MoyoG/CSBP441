@@ -36,6 +36,7 @@
           <section class="lecture-section"><p class="eyebrow">Learning outcomes</p><h2>What you should be able to do</h2><ul class="objectives">${data.objectives.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></section>
           <section class="lecture-section" id="concepts"><p class="eyebrow">Theory</p><h2>Important concepts</h2><div class="concept-list">${data.concepts.map((x,i)=>`<details ${i===0?"open":""}><summary>${esc(x[0])}</summary><p>${esc(x[1])}</p></details>`).join("")}</div></section>
           <section class="lecture-section" id="hands-on"><p class="eyebrow">Hands-on material</p><h2>From theory to evidence</h2><div class="workflow">${data.handsOn.map((x,i)=>`<div><span>0${i+1}</span><h3>${esc(x[0])}</h3><p>${esc(x[1])}</p></div>`).join("")}</div></section>
+          ${data.interactiveXor ? `<section class="lecture-section" id="xor-trainer"><p class="eyebrow">Interactive laboratory</p><h2>2–2–1 XOR forward pass and backpropagation</h2><p>Edit the initial weights and biases, choose the number of full-batch epochs, and run the exact XOR training example from the worked document. The learning rate is η=1.</p><div id="xor-trainer-app"></div></section>` : ""}
           ${data.materials ? `<section class="lecture-section" id="materials"><p class="eyebrow">In-class lab</p><h2>${esc(data.materialsTitle || "Calculate the complete Canny pipeline")}</h2><div class="notebook-list">${data.materials.map(x=>`<div class="notebook-item"><div><strong>${esc(x[0])}</strong><p>${esc(x[1])}</p></div><div class="button-row"><a class="button button-primary" href="${esc(x[2])}" download>Download worksheet</a></div></div>`).join("")}</div></section>` : ""}
           <section class="lecture-section" id="notebooks"><p class="eyebrow">Colab</p><h2>Run the notebooks</h2><div class="notebook-list">${data.notebooks.map(x=>`<div class="notebook-item"><div><strong>${esc(x[0])}</strong><p>${esc(x[1])}</p></div><div class="button-row"><a class="button button-primary" target="_blank" rel="noopener" href="${notebookUrl(x[2])}">Open in Colab</a><a class="button button-secondary" href="notebooks/${encodeURIComponent(x[2])}">Download</a></div></div>`).join("")}</div></section>
           <section class="lecture-section" id="knowledge-check"><p class="eyebrow">Self-check</p><h2>Interactive MCQs</h2><p>Answer all ${data.mcqs.length} multiple-choice questions for this lecture note. Feedback explains the best answer after every question.</p><div id="quiz"></div></section>
@@ -50,6 +51,39 @@
   initQuiz();
   initTrueFalse();
   initGenerator();
+  if (data.interactiveXor) initXorTrainer();
+
+  function initXorTrainer() {
+    const host = document.getElementById("xor-trainer-app");
+    const defaults = {w11:4,w12:4,b1:-2,w21:-4,w22:-4,b2:6,v1:4,v2:4,bo:-8.5,epochs:2};
+    const examples = [[0,0,0],[0,1,1],[1,0,1],[1,1,0]];
+    const fields = [["w11","w₁₁"],["w12","w₁₂"],["b1","b₁"],["w21","w₂₁"],["w22","w₂₂"],["b2","b₂"],["v1","v₁"],["v2","v₂"],["bo","bₒ"],["epochs","Epochs"]];
+    host.innerHTML = `<div class="xor-controls"><div class="xor-parameter-grid">${fields.map(([key,label])=>`<label>${label}<input type="number" step="any" data-xor-param="${key}" value="${defaults[key]}"></label>`).join("")}</div><div class="button-row"><button class="button button-primary" id="run-xor">Run training</button><button class="button button-secondary" id="reset-xor">Reset defaults</button></div></div><div id="xor-results" aria-live="polite"></div>`;
+    const readParams = () => Object.fromEntries(fields.map(([key])=>[key,Number(host.querySelector(`[data-xor-param="${key}"]`).value)]));
+    const sigmoid = z => 1/(1+Math.exp(-z));
+    function forward(p,x1,x2,y) {
+      const z1=p.w11*x1+p.w12*x2+p.b1, h1=sigmoid(z1), z2=p.w21*x1+p.w22*x2+p.b2, h2=sigmoid(z2), zo=p.v1*h1+p.v2*h2+p.bo, yhat=sigmoid(zo);
+      return {x1,x2,y,z1,h1,z2,h2,zo,yhat,class:yhat>=.5?1:0,loss:-(y*Math.log(yhat)+(1-y)*Math.log(1-yhat))};
+    }
+    function gradients(p) {
+      const g={w11:0,w12:0,b1:0,w21:0,w22:0,b2:0,v1:0,v2:0,bo:0};
+      const rows=examples.map(([x1,x2,y])=>forward(p,x1,x2,y));
+      rows.forEach(r=>{const d0=r.yhat-r.y,d1=d0*p.v1*r.h1*(1-r.h1),d2=d0*p.v2*r.h2*(1-r.h2);g.w11+=d1*r.x1;g.w12+=d1*r.x2;g.b1+=d1;g.w21+=d2*r.x1;g.w22+=d2*r.x2;g.b2+=d2;g.v1+=d0*r.h1;g.v2+=d0*r.h2;g.bo+=d0;});
+      Object.keys(g).forEach(k=>g[k]/=examples.length); return {g,rows};
+    }
+    function fmt(v){return Number(v).toFixed(4)}
+    function render() {
+      const p=readParams(), epochs=Math.max(0,Math.round(p.epochs)), initial={...p}, stages=[]; delete initial.epochs;
+      stages.push({name:"Initial",p:{...initial},calc:gradients(initial)});
+      let current={...initial};
+      for(let e=1;e<=epochs;e++){const calc=gradients(current);Object.keys(calc.g).forEach(k=>current[k]-=calc.g[k]);stages.push({name:`After epoch ${e}`,p:{...current},calc:gradients(current)});}
+      const final=stages[stages.length-1], rows=final.calc.rows;
+      document.getElementById("xor-results").innerHTML=`<h3>Forward-pass results</h3><div class="table-scroll"><table class="results-table"><thead><tr><th>Input</th><th>Target</th><th>z₁</th><th>h₁</th><th>z₂</th><th>h₂</th><th>zₒ</th><th>ŷ</th><th>Class</th><th>BCE</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r.x1}${r.x2}</td><td>${r.y}</td><td>${fmt(r.z1)}</td><td>${fmt(r.h1)}</td><td>${fmt(r.z2)}</td><td>${fmt(r.h2)}</td><td>${fmt(r.zo)}</td><td>${fmt(r.yhat)}</td><td>${r.class}</td><td>${fmt(r.loss)}</td></tr>`).join("")}</tbody></table></div><h3>Full-batch training summary</h3><div class="table-scroll"><table class="results-table"><thead><tr><th>Stage</th><th>Prediction pattern 00 01 10 11</th><th>Mean BCE</th><th>bₒ</th><th>v₁</th><th>v₂</th></tr></thead><tbody>${stages.map(s=>{const rr=s.calc.rows;return `<tr><td>${s.name}</td><td>${rr.map(r=>r.class).join(" ")}</td><td>${fmt(rr.reduce((a,r)=>a+r.loss,0)/4)}</td><td>${fmt(s.p.bo)}</td><td>${fmt(s.p.v1)}</td><td>${fmt(s.p.v2)}</td></tr>`}).join("")}</tbody></table></div><details><summary>Final parameter values</summary><p>${Object.keys(final.p).map(k=>`${k}=${fmt(final.p[k])}`).join(" · ")}</p></details>`;
+    }
+    host.querySelector("#run-xor").addEventListener("click",render);
+    host.querySelector("#reset-xor").addEventListener("click",()=>{fields.forEach(([key])=>host.querySelector(`[data-xor-param="${key}"]`).value=defaults[key]);render();});
+    render();
+  }
 
   function initQuiz() {
     const host = document.getElementById("quiz");
