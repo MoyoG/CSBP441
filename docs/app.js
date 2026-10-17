@@ -48,9 +48,9 @@
     </div>
     <footer><span>CSBP441 Applied Computer Vision</span><span>LN${ln} ${esc(data.short)}</span></footer>`;
 
+  if (data.interactiveXor) initXorTrainer();
   initQuiz();
   initTrueFalse();
-  if (data.interactiveXor) initXorTrainer();
   initGenerator();
 
   function initXorTrainer() {
