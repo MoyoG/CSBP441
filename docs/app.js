@@ -50,8 +50,8 @@
 
   initQuiz();
   initTrueFalse();
-  initGenerator();
   if (data.interactiveXor) initXorTrainer();
+  initGenerator();
 
   function initXorTrainer() {
     const host = document.getElementById("xor-trainer-app");
