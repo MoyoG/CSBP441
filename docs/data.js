@@ -508,8 +508,8 @@ window.COURSE_DATA = {
     notebooks: [],
     materialsTitle: "LN9 CNN assessment",
     materials: [["Question bank","20 MCQs and 10 true/false questions in the standard LN page.","ln9.html"],["Problem-solving set","10 CNN calculation and reasoning problems.","assessment/LN9_CNNs_Problem_Solving.md"]],
-    mcqs: window.LN9_QUESTIONS.mcqs,
-    trueFalse: window.LN9_QUESTIONS.trueFalse,
+    mcqs: window.LN9_QUESTIONS.mcqs.map(x=>({q:x[0],options:x[1],answer:x[2],why:x[3]})),
+    trueFalse: window.LN9_QUESTIONS.trueFalse.map(x=>({q:x[0],answer:x[1],why:x[2]})),
     problemQuestions: window.LN9_QUESTIONS.problems,
     problemTypes: [["p01","CNN review problem"]]
   }
