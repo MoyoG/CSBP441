@@ -54,7 +54,7 @@
   initQuiz();
   initTrueFalse();
   if (data.problemQuestions) initProblemQuestions();
-  else initGenerator();
+  else if ((data.problemTypes || []).length) initGenerator();
 
   function initProblemQuestions() {
     const host = document.getElementById("problem-questions");
