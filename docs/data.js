@@ -494,5 +494,22 @@ window.COURSE_DATA = {
     mcqs: [{q:"How many trainable parameters are in a 2–2–1 MLP?",options:["5","7","9","12"],answer:2,why:"There are six hidden-layer parameters, two output weights, and one output bias."},{q:"What is the sigmoid derivative?",options:["σ(z)","σ(z)(1−σ(z))","1−z","z²"],answer:1,why:"The sigmoid derivative can be written using its output as σ(z)(1−σ(z))."},{q:"For sigmoid output with binary cross-entropy, what is δᵒ?",options:["ŷ+y","ŷ−y","y−ŷ","ŷ(1−ŷ)"],answer:1,why:"The sigmoid derivative and BCE derivative simplify to δᵒ=ŷ−y."},{q:"Why can a 2–2–1 network solve XOR?",options:["It has no biases","It combines hidden nonlinear units","XOR is linearly separable","It uses no activation"],answer:1,why:"The hidden nonlinear representation allows a non-linear decision boundary."},{q:"What is the gradient-descent update?",options:["θ+η∇L","θ−η∇L","η−θ","θ/η"],answer:1,why:"Gradient descent moves parameters opposite the loss gradient."}],
     trueFalse: [{q:"A bias is a trainable parameter.",answer:true,why:"Biases are learned along with weights."},{q:"The hidden error depends on the outgoing weight.",answer:true,why:"Backpropagation multiplies the output error by the hidden unit's outgoing weight."},{q:"XOR is linearly separable.",answer:false,why:"A single line cannot separate the XOR classes."},{q:"A zero input produces a zero weight gradient for that connection in one example.",answer:true,why:"∂L/∂w=δx, so x=0 makes that gradient zero."},{q:"The learning rate changes the loss formula itself.",answer:false,why:"It scales the parameter update after the gradient is calculated."}],
     problemTypes: []
+  },
+  9: {
+    short: "CNNs",
+    title: "Convolutional Neural Networks",
+    summary: "Use local receptive fields and shared filters to preserve image structure while learning hierarchical visual features.",
+    image: "assets/ln7.png",
+    objectives: ["Explain why CNNs are suited to image data.","Calculate convolutional output dimensions and parameter counts.","Explain stride, padding, pooling, batch normalization, and receptive fields.","Interpret feature hierarchies and compare LeNet with AlexNet."],
+    concepts: [["CNN motivation","CNNs preserve spatial neighborhoods and reuse the same filter across image locations."],["Convolution","A filter multiplies a local image region, sums across channels, and produces one activation."],["Output size","For input N, filter F, padding P, and stride S, output size is (N-F+2P)/S+1 when the division is exact."],["Pooling","Max or average pooling reduces spatial resolution independently in each activation map."],["Feature hierarchy","Early layers detect edges and colors, while deeper layers combine them into textures, parts, and objects."],["Architectures","LeNet established compact digit-recognition CNNs, while AlexNet demonstrated deep CNN performance at ImageNet scale."]],
+    handsOn: [["Calculate","Work through output-size and parameter-count examples."],["Compare","Change stride and padding and observe the output volume."],["Pool","Apply max pooling by hand to a small activation map."],["Interpret","Relate filter depth to the visual hierarchy learned by the network."]],
+    recap: "CNNs combine local connectivity, shared weights, nonlinear activations, pooling, and depth to learn useful image representations end to end.",
+    takeaways: ["A convolution filter spans all input channels but remains local in space.","Stride and padding control spatial output size, not the number of filter parameters.","Pooling reduces spatial resolution independently per channel.","CNN filters often progress from edges to textures, parts, and object-level patterns.","AlexNet used convolution, pooling, normalization, and dense layers in a deep ImageNet model."],
+    notebooks: [],
+    materialsTitle: "LN9 CNN assessment",
+    materials: [["Question bank","20 MCQs and 10 true/false questions in the standard LN page.","ln9.html"],["Problem-solving set","10 CNN calculation and reasoning problems.","assessment/LN9_CNNs_Problem_Solving.md"]],
+    mcqs: window.LN9_QUESTIONS.mcqs,
+    trueFalse: window.LN9_QUESTIONS.trueFalse,
+    problemTypes: []
   }
 };

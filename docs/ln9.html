@@ -1,52 +1,16 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LN9 | CNNs | CSBP441</title><link rel="stylesheet" href="styles.css?v=20260921c"></head><body><header class="site-header"><a class="course-mark" href="index.html"><span class="course-code">CSBP441</span><span>Applied Computer Vision</span></a><nav class="top-nav" aria-label="Course navigation"><a href="index.html">Course home</a><a href="ln8.html">LN8</a></nav></header><main><section class="course-overview"><div><p class="eyebrow">LN9 assessment bank</p><h1>Convolutional Neural Networks</h1><p class="lede">20 multiple-choice questions, 10 true/false questions, and 10 problem-solving questions covering convolution, filters, receptive fields, stride, padding, pooling, batch normalization, feature hierarchies, LeNet, and AlexNet.</p></div><dl class="course-facts"><div><dt>Questions</dt><dd>40</dd></div><div><dt>Format</dt><dd>20 MCQ · 10 TF · 10 problems</dd></div><div><dt>Source</dt><dd>LN 9 CNNs</dd></div></dl></section><section class="content-section"><h2>Multiple-choice questions</h2><ol id="mcq"></ol></section><section class="content-section"><h2>True or false</h2><ol id="tf"></ol></section><section class="content-section"><h2>Problem solving</h2><ol id="problems"></ol></section></main><footer><span>CSBP441 Applied Computer Vision</span><span>LN9 CNNs</span></footer><script>
-const mcq=[
-['Why are CNNs generally better suited than fully connected networks for images?',['They preserve local spatial structure and reuse filters','They remove the need for training data','They assign a unique weight to every pixel location','They only operate on grayscale images'],0,'CNNs use local receptive fields and shared weights, preserving useful spatial structure while reducing parameters.'],
-['For a valid convolution with input width N, filter width F, stride S, and no padding, the output width is:',['N+F+S','(N-F)/S+1','(N+F)/S-1','NFS'],1,'The valid output-size formula is floor((N-F)/S)+1 when the dimensions divide cleanly.'],
-['A convolution filter that spans all input channels produces:',['One scalar for the entire dataset','One activation at each valid spatial position','One separate output for each input channel only','A probability distribution automatically'],1,'The filter slides spatially and sums across all channels at each location.'],
-['What is the receptive field of a neuron?',['The number of classes in the dataset','The region of the input that can affect that neuron','The batch size used during training','The number of filters in a layer'],1,'The receptive field is the input region visible to a particular activation.'],
-['A 5×5 filter applied to a 32×32 image with stride 1 and no padding gives a spatial output of:',['32×32','28×28','27×27','37×37'],1,'Each spatial dimension is 32-5+1=28.'],
-['Five 5×5 filters process a 32×32×3 input with stride 1 and no padding. What is the output volume?',['28×28×3','32×32×5','28×28×5','5×5×28'],2,'Each filter produces one 28×28 activation map, and five filters give five channels.'],
-['How many parameters are in five 5×5 filters applied to a 3-channel input, including one bias per filter?',['75','380','400','625'],1,'5×5×3×5 weights plus 5 biases equals 380.'],
-['What does increasing stride usually do?',['Increase spatial output size','Decrease spatial output size by taking larger steps','Add input channels','Remove all learned parameters'],1,'A larger stride samples fewer filter positions.'],
-['For N=9, F=3, S=1, and P=1, the output size is:',['7','8','9','11'],2,'(9-3+2×1)/1+1=9, preserving spatial size.'],
-['Which padding value is most commonly used in basic CNN examples?',['Zero','Random noise','The batch mean','A learned class label'],0,'Zero padding is common and makes the border treatment explicit.'],
-['Max pooling over a 2×2 window selects the:',['Mean value','Largest activation','Smallest activation','Median channel'],1,'Max pooling keeps the largest value in each pooling window.'],
-['Pooling is usually applied independently to:',['Each activation map','All images in the dataset at once','Only the bias vector','The class labels'],0,'A pooling window operates spatially within each channel.'],
-['A key purpose of pooling is to:',['Increase spatial resolution','Reduce spatial resolution and computation','Add trainable biases','Convert RGB to BGR'],1,'Pooling creates a smaller spatial representation.'],
-['Batch normalization mainly normalizes activations using statistics estimated from:',['Each mini-batch during training','The final test label','Only the first image','The camera calibration matrix'],0,'Batch normalization uses mini-batch mean and variance during training.'],
-['The first layers of a CNN commonly learn:',['Edges and simple local patterns','Complete object identities only','Camera poses only','Text captions'],0,'Early filters often respond to edges, orientations, and colors.'],
-['Deeper CNN layers tend to represent:',['Larger and more abstract structures','Only individual pixels','No spatial information at all','Only padding values'],0,'Stacked layers combine simple patterns into textures, parts, and object-level structure.'],
-['AlexNet won the ImageNet challenge in:',['1995','2005','2012','2020'],2,'The lecture identifies AlexNet as the 2012 ILSVRC winner.'],
-['AlexNet’s first convolution uses 96 filters of size 11×11 on 227×227×3 input with stride 4. Its spatial output is:',['55×55','56×56','96×96','227×227'],0,'(227-11)/4+1=55.'],
-['How many learned parameters does a max-pooling layer have in the lecture’s AlexNet example?',['0','96','3×3×96','27×27'],0,'Pooling uses a fixed selection operation and has no learned weights or biases.'],
-['Which statement best describes end-to-end CNN learning?',['The network learns useful features and predictions jointly from image inputs','All features must be hand-engineered first','Only the final bias is learned','The image must be flattened before every convolution'],0,'CNNs learn a hierarchy of filters and task predictions through backpropagation.']
-];
-const tf=[
-['A CNN filter is local in space but spans all input channels.',true,'The filter covers a local spatial window and all channels.'],
-['A fully connected layer naturally preserves the 2D neighborhood structure of an image.',false,'Flattening removes explicit spatial adjacency.'],
-['With stride 1 and padding P=(F-1)/2 for odd F, a convolution can preserve spatial size.',true,'Substitution into the output formula gives N.'],
-['Adding more filters changes the number of output channels.',true,'Each filter produces one output activation map.'],
-['Changing stride changes the number of parameters in a convolution filter.',false,'Stride changes where the filter is applied, not the filter weights.'],
-['Zero padding can help a network retain border information and control output size.',true,'Padding adds a border around the input.'],
-['Max pooling operates over all channels together and returns one channel.',false,'Standard pooling acts independently on each activation map.'],
-['Batch normalization can make optimization easier by controlling activation statistics.',true,'Normalizing batch activations can improve training behavior.'],
-['The number of parameters in a convolution depends on the spatial output size.',false,'It depends on filter size, input channels, output filters, and biases.'],
-['AlexNet contains convolutional layers followed by pooling, normalization, and dense layers.',true,'This is the architecture sequence shown in the lecture.']
-];
-const problems=[
-['Output dimensions','A 64×64×3 input is processed by 16 filters of size 5×5, stride 2, with no padding. Find the output height, width, and channels.','Use floor((N-F)/S)+1 independently for height and width.'],
-['Parameter count','A convolution layer has 32 filters of size 3×3 and receives 16 input channels. Include one bias per filter. How many trainable parameters are there?','Compute Fh×Fw×Cin×Cout+Cout.'],
-['Padding design','Choose the symmetric padding P for a 7×7 filter with stride 1 so that a 28×28 input keeps the same spatial size. Verify with the output formula.','For odd F and stride 1, use P=(F-1)/2.'],
-['Stride comparison','For a 32×32×3 input, 5×5 filters, and 8 output filters, compute the output volume for stride 1 and stride 3, both with no padding. Explain what changes and what stays constant.','Apply the output formula twice. Parameter count is independent of stride.'],
-['AlexNet first layer','Using the lecture’s AlexNet input 227×227×3, 96 filters of 11×11, stride 4, and no padding, calculate the spatial output and the number of weights plus biases.','Output: (227-11)/4+1. Parameters: 11×11×3×96+96.'],
-['Pooling calculation','Apply 2×2 max pooling with stride 2 to [[1,5,2,4],[3,7,0,6],[8,2,9,1],[4,3,5,0]]. Give the 2×2 output.','Take the maximum from each non-overlapping 2×2 block.'],
-['Receptive field','Two convolution layers use 3×3 filters, stride 1, and no pooling. What input-side receptive-field size does one second-layer activation see?','The first layer sees 3 pixels; the second expands the span by 2 more, giving 5×5.'],
-['Convolution response','For image patch [[1,2],[3,4]] and filter [[1,0],[0,-1]], compute the single valid cross-correlation response. Interpret its sign.','Multiply elementwise and sum. A negative value means the patch aligns more with the filter’s negative diagonal under this convention.'],
-['Architecture reasoning','Explain why replacing a fully connected first layer on a 285×350×3 image with convolutional filters can dramatically reduce parameters. Include the role of local connectivity and weight sharing.','A dense layer connects every pixel-channel value to every neuron, while a convolution reuses a small kernel at many locations.'],
-['Design choice','A feature map is 32×32 and a model must reduce it to 16×16 while retaining the number of channels. Propose a pooling configuration and explain its effect on computation and spatial detail.','A 2×2 pooling window with stride 2 gives 16×16 per channel and reduces spatial computation while discarding detail.']
-];
-function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-document.getElementById('mcq').innerHTML=mcq.map((x,i)=>`<li><p><strong>${esc(x[0])}</strong></p><ol type="A">${x[1].map((o,j)=>`<li>${esc(o)}</li>`).join('')}</ol><details><summary>Answer and explanation</summary><p><strong>${'ABCD'[x[2]]}.</strong> ${esc(x[3])}</p></details></li>`).join('');
-document.getElementById('tf').innerHTML=tf.map((x,i)=>`<li><p>${esc(x[0])}</p><details><summary>Answer and explanation</summary><p><strong>${x[1]?'True':'False'}.</strong> ${esc(x[2])}</p></details></li>`).join('');
-document.getElementById('problems').innerHTML=problems.map(x=>`<li><p><strong>${esc(x[0])}</strong></p><p>${esc(x[1])}</p><details><summary>Solution approach</summary><p>${esc(x[2])}</p></details></li>`).join('');
-</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LN9 | CSBP441</title>
+  <link rel="stylesheet" href="styles.css?v=20261017a">
+</head>
+<body data-ln="9">
+  <div id="lecture-app"></div>
+  <script src="ln9-questions.js?v=20261102a"></script>
+  <script src="data.js?v=20261102a"></script>
+  <script src="problem-bank.js?v=20260928a"></script>
+  <script src="app.js?v=20261017l"></script>
+</body>
+</html>
