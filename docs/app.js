@@ -41,7 +41,7 @@
           <section class="lecture-section" id="notebooks"><p class="eyebrow">Colab</p><h2>Run the notebooks</h2><div class="notebook-list">${data.notebooks.map(x=>`<div class="notebook-item"><div><strong>${esc(x[0])}</strong><p>${esc(x[1])}</p></div><div class="button-row"><a class="button button-primary" target="_blank" rel="noopener" href="${notebookUrl(x[2])}">Open in Colab</a><a class="button button-secondary" href="notebooks/${encodeURIComponent(x[2])}">Download</a></div></div>`).join("")}</div></section>
           <section class="lecture-section" id="knowledge-check"><p class="eyebrow">Self-check</p><h2>Interactive MCQs</h2><p>Answer all ${data.mcqs.length} multiple-choice questions for this lecture note. Feedback explains the best answer after every question.</p><div id="quiz"></div></section>
           <section class="lecture-section" id="true-false"><p class="eyebrow">Concept check</p><h2>Interactive True or False</h2><p>Answer all ${(data.trueFalse || []).length} statements for this lecture note. Feedback explains why each statement is true or false.</p><div id="true-false-quiz"></div></section>
-          <section class="lecture-section" id="problem-lab"><p class="eyebrow">Exam practice</p><h2>Parameterized problem generator</h2><p>A seed creates reproducible starting values. Edit the displayed inputs, then recalculate the worked solution.</p>${data.problemBankLink ? `<p><a class="button button-secondary" href="${esc(data.problemBankLink)}">Open the 20-question LN6 problem bank</a></p>` : ""}<div id="generator"></div></section>
+          <section class="lecture-section" id="problem-lab"><p class="eyebrow">Exam practice</p><h2>${data.problemQuestions ? "Interactive problem solving" : "Parameterized problem generator"}</h2><p>${data.problemQuestions ? "Attempt each CNN problem, then reveal the solution approach when you are ready." : "A seed creates reproducible starting values. Edit the displayed inputs, then recalculate the worked solution."}</p>${data.problemBankLink ? `<p><a class="button button-secondary" href="${esc(data.problemBankLink)}">Open the 20-question LN6 problem bank</a></p>` : ""}<div id="generator"></div><div id="problem-questions"></div></section>
           ${data.takeaways ? `<section class="lecture-section" id="takeaways"><p class="eyebrow">LN${ln} recap</p><h2>Summary and takeaways</h2><p class="takeaway-summary">${esc(data.recap || data.summary)}</p><ol class="takeaway-list">${data.takeaways.map(item=>`<li>${esc(item)}</li>`).join("")}</ol></section>` : ""}
         </div>
       </main>
@@ -51,7 +51,19 @@
   if (data.interactiveXor) initXorTrainer();
   initQuiz();
   initTrueFalse();
-  initGenerator();
+  if (data.problemQuestions) initProblemQuestions();
+  else initGenerator();
+
+  function initProblemQuestions() {
+    const host = document.getElementById("problem-questions");
+    host.innerHTML = data.problemQuestions.map((item, i) => `<article class="problem-card"><p class="eyebrow">Problem ${i+1}</p><h3>${esc(item[0])}</h3><p>${esc(item[1])}</p><button class="button button-secondary problem-solution-toggle" type="button">Show solution approach</button><div class="problem-solution" hidden><p>${esc(item[2])}</p></div></article>`).join("");
+    host.querySelectorAll(".problem-solution-toggle").forEach(button => button.addEventListener("click", () => {
+      const solution = button.nextElementSibling;
+      const open = !solution.hidden;
+      solution.hidden = open;
+      button.textContent = open ? "Show solution approach" : "Hide solution approach";
+    }));
+  }
 
   function initXorTrainer() {
     const host = document.getElementById("xor-trainer-app");

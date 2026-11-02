@@ -510,6 +510,7 @@ window.COURSE_DATA = {
     materials: [["Question bank","20 MCQs and 10 true/false questions in the standard LN page.","ln9.html"],["Problem-solving set","10 CNN calculation and reasoning problems.","assessment/LN9_CNNs_Problem_Solving.md"]],
     mcqs: window.LN9_QUESTIONS.mcqs,
     trueFalse: window.LN9_QUESTIONS.trueFalse,
+    problemQuestions: window.LN9_QUESTIONS.problems,
     problemTypes: [["p01","CNN review problem"]]
   }
 };
