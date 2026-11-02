@@ -19,7 +19,7 @@ window.LN9_QUESTIONS={mcqs:[
 ['AlexNet’s first convolution uses 96 filters of size 11×11 on 227×227×3 input with stride 4. Its spatial output is:',['55×55','56×56','96×96','227×227'],0,'(227-11)/4+1=55.'],
 ['How many learned parameters does a max-pooling layer have in the lecture’s AlexNet example?',['0','96','3×3×96','27×27'],0,'Pooling uses a fixed selection operation and has no learned weights or biases.'],
 ['Which statement best describes end-to-end CNN learning?',['The network learns useful features and predictions jointly from image inputs','All features must be hand-engineered first','Only the final bias is learned','The image must be flattened before every convolution'],0,'CNNs learn a hierarchy of filters and task predictions through backpropagation.']
-];,trueFalse:[
+],trueFalse:[
 ['A CNN filter is local in space but spans all input channels.',true,'The filter covers a local spatial window and all channels.'],
 ['A fully connected layer naturally preserves the 2D neighborhood structure of an image.',false,'Flattening removes explicit spatial adjacency.'],
 ['With stride 1 and padding P=(F-1)/2 for odd F, a convolution can preserve spatial size.',true,'Substitution into the output formula gives N.'],
@@ -30,7 +30,7 @@ window.LN9_QUESTIONS={mcqs:[
 ['Batch normalization can make optimization easier by controlling activation statistics.',true,'Normalizing batch activations can improve training behavior.'],
 ['The number of parameters in a convolution depends on the spatial output size.',false,'It depends on filter size, input channels, output filters, and biases.'],
 ['AlexNet contains convolutional layers followed by pooling, normalization, and dense layers.',true,'This is the architecture sequence shown in the lecture.']
-];,problems:[
+],problems:[
 ['Output dimensions','A 64×64×3 input is processed by 16 filters of size 5×5, stride 2, with no padding. Find the output height, width, and channels.','Use floor((N-F)/S)+1 independently for height and width.'],
 ['Parameter count','A convolution layer has 32 filters of size 3×3 and receives 16 input channels. Include one bias per filter. How many trainable parameters are there?','Compute Fh×Fw×Cin×Cout+Cout.'],
 ['Padding design','Choose the symmetric padding P for a 7×7 filter with stride 1 so that a 28×28 input keeps the same spatial size. Verify with the output formula.','For odd F and stride 1, use P=(F-1)/2.'],
