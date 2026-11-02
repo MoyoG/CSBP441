@@ -5,6 +5,8 @@
   const data = window.COURSE_DATA[ln];
   const app = document.getElementById("lecture-app");
   if (!data || !app) return;
+  data.mcqs = (data.mcqs || []).map(item => Array.isArray(item) ? {q:item[0], options:item[1], answer:item[2], why:item[3]} : item);
+  data.trueFalse = (data.trueFalse || []).map(item => Array.isArray(item) ? {q:item[0], answer:item[1], why:item[2]} : item);
 
   const esc = (value) => String(value).replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
   const fmt = value => Number.isInteger(value) ? String(value) : Number(value.toFixed(2)).toString();
