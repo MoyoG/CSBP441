@@ -41,4 +41,4 @@ window.LN9_QUESTIONS={mcqs:[
 ['Convolution response','For image patch [[1,2],[3,4]] and filter [[1,0],[0,-1]], compute the single valid cross-correlation response. Interpret its sign.','Multiply elementwise and sum. A negative value means the patch aligns more with the filter’s negative diagonal under this convention.'],
 ['Architecture reasoning','Explain why replacing a fully connected first layer on a 285×350×3 image with convolutional filters can dramatically reduce parameters. Include the role of local connectivity and weight sharing.','A dense layer connects every pixel-channel value to every neuron, while a convolution reuses a small kernel at many locations.'],
 ['Design choice','A feature map is 32×32 and a model must reduce it to 16×16 while retaining the number of channels. Propose a pooling configuration and explain its effect on computation and spatial detail.','A 2×2 pooling window with stride 2 gives 16×16 per channel and reduces spatial computation while discarding detail.']
-];};
+]};
