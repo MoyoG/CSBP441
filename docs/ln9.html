@@ -46,7 +46,7 @@ const problems=[
 ['Design choice','A feature map is 32×32 and a model must reduce it to 16×16 while retaining the number of channels. Propose a pooling configuration and explain its effect on computation and spatial detail.','A 2×2 pooling window with stride 2 gives 16×16 per channel and reduces spatial computation while discarding detail.']
 ];
 function esc(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-document.getElementById('mcq').innerHTML=mcq.map((x,i)=>`<li><p><strong>${esc(x[0])}</strong></p><ol type="A">${x[1].map((o,j)=>`<li>${esc(o)}</li>`).join('')}</ol><details><summary>Answer and explanation</summary><p><strong>${'ABCD'[x[2]]}.</strong> ${esc(x[4])}</p></details></li>`).join('');
+document.getElementById('mcq').innerHTML=mcq.map((x,i)=>`<li><p><strong>${esc(x[0])}</strong></p><ol type="A">${x[1].map((o,j)=>`<li>${esc(o)}</li>`).join('')}</ol><details><summary>Answer and explanation</summary><p><strong>${'ABCD'[x[2]]}.</strong> ${esc(x[3])}</p></details></li>`).join('');
 document.getElementById('tf').innerHTML=tf.map((x,i)=>`<li><p>${esc(x[0])}</p><details><summary>Answer and explanation</summary><p><strong>${x[1]?'True':'False'}.</strong> ${esc(x[2])}</p></details></li>`).join('');
 document.getElementById('problems').innerHTML=problems.map(x=>`<li><p><strong>${esc(x[0])}</strong></p><p>${esc(x[1])}</p><details><summary>Solution approach</summary><p>${esc(x[2])}</p></details></li>`).join('');
 </script></body></html>
