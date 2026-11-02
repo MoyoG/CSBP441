@@ -404,3 +404,18 @@ input, select { min-height: 42px; padding: 8px 10px; color: var(--ink); backgrou
 .boundary-visual svg { width:240px; max-width:100%; height:auto; }
 /* Compact interactive LN9 CNN lab */
 .cnn-builder{margin:1rem 0;padding:1rem;background:#f5f8fa;border:1px solid #d6e0e7;border-radius:12px}.cnn-builder h3{margin:.25rem 0 .4rem}.cnn-builder p{margin:.35rem 0 .7rem}.cnn-builder fieldset{display:inline-block;vertical-align:top;margin:.35rem .5rem .35rem 0;padding:.55rem .7rem;border:1px solid #cbd8e1;border-radius:8px;background:#fff}.cnn-builder legend{padding:0 .3rem;font-weight:700;font-size:.85rem}.cnn-controls{display:flex;flex-wrap:wrap;gap:.45rem;align-items:end}.cnn-controls label{font-size:.78rem;color:#385064}.cnn-controls input[type=number]{display:block;width:4.4rem;padding:.3rem}.cnn-controls input[type=checkbox]{width:auto;margin-right:.25rem}.cnn-builder .results-table{font-size:.78rem;margin-top:.8rem}.cnn-builder .results-table th,.cnn-builder .results-table td{padding:.35rem .45rem}.problem-card{padding:.8rem 1rem;margin:.6rem 0;border:1px solid #d6e0e7;border-radius:10px;background:#fff}.problem-card h3{margin:.15rem 0 .35rem;font-size:1rem}.problem-card p{margin:.3rem 0}.problem-solution{margin-top:.45rem;padding:.5rem .7rem;background:#f5f8fa;border-left:3px solid #087f75}
+/* Extra-dense CNN controls: keep the complete three-layer configuration visible. */
+.cnn-builder{margin:.65rem 0;padding:.65rem;border-radius:8px}
+.cnn-builder h3{font-size:1rem;margin:.1rem 0 .2rem}
+.cnn-builder>p:not(.eyebrow){font-size:.76rem;margin:.2rem 0 .45rem}
+.cnn-builder fieldset{display:block;margin:.3rem 0;padding:.35rem .45rem;border-radius:6px}
+.cnn-builder legend{font-size:.75rem}
+.cnn-builder .cnn-controls{display:grid;grid-template-columns:repeat(8,minmax(58px,1fr));gap:.25rem;align-items:end}
+.cnn-builder .cnn-controls label{font-size:.68rem;line-height:1.1;gap:2px;min-width:0}
+.cnn-builder .cnn-controls input[type=number]{box-sizing:border-box;width:100%;min-height:26px;height:26px;padding:2px 4px;font-size:.78rem}
+.cnn-builder .cnn-controls label:has(input[type=checkbox]){display:flex;align-items:center;min-height:26px;white-space:nowrap}
+.cnn-builder .cnn-controls input[type=checkbox]{margin:0 3px 0 0}
+.cnn-builder #calculate-cnn{margin-top:.25rem;padding:.35rem .65rem;font-size:.78rem}
+.cnn-builder .results-table{margin-top:.45rem;font-size:.7rem}
+.cnn-builder .results-table th,.cnn-builder .results-table td{padding:.22rem .3rem}
+@media (max-width:760px){.cnn-builder .cnn-controls{grid-template-columns:repeat(4,minmax(58px,1fr))}}
