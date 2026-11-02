@@ -404,6 +404,12 @@ input, select { min-height: 42px; padding: 8px 10px; color: var(--ink); backgrou
 .boundary-visual svg { width:240px; max-width:100%; height:auto; }
 /* Compact interactive LN9 CNN lab */
 .cnn-builder{margin:1rem 0;padding:1rem;background:#f5f8fa;border:1px solid #d6e0e7;border-radius:12px}.cnn-builder h3{margin:.25rem 0 .4rem}.cnn-builder p{margin:.35rem 0 .7rem}.cnn-builder fieldset{display:inline-block;vertical-align:top;margin:.35rem .5rem .35rem 0;padding:.55rem .7rem;border:1px solid #cbd8e1;border-radius:8px;background:#fff}.cnn-builder legend{padding:0 .3rem;font-weight:700;font-size:.85rem}.cnn-controls{display:flex;flex-wrap:wrap;gap:.45rem;align-items:end}.cnn-controls label{font-size:.78rem;color:#385064}.cnn-controls input[type=number]{display:block;width:4.4rem;padding:.3rem}.cnn-controls input[type=checkbox]{width:auto;margin-right:.25rem}.cnn-builder .results-table{font-size:.78rem;margin-top:.8rem}.cnn-builder .results-table th,.cnn-builder .results-table td{padding:.35rem .45rem}.problem-card{padding:.8rem 1rem;margin:.6rem 0;border:1px solid #d6e0e7;border-radius:10px;background:#fff}.problem-card h3{margin:.15rem 0 .35rem;font-size:1rem}.problem-card p{margin:.3rem 0}.problem-solution{margin-top:.45rem;padding:.5rem .7rem;background:#f5f8fa;border-left:3px solid #087f75}
+/* Compact problem picker and solution controls. */
+.problem-variant-controls{display:flex;flex-wrap:wrap;align-items:end;gap:.45rem;margin:.45rem 0;padding:.55rem .65rem;background:#f5f8fa;border:1px solid #d6e0e7;border-radius:7px}
+.problem-variant-controls label{font-size:.7rem;gap:2px}
+.problem-variant-controls select,.problem-variant-controls input{min-height:28px;height:28px;padding:2px 5px;font-size:.76rem}
+.problem-variant-controls select{width:min(390px,55vw)}
+.problem-variant-controls button{padding:.32rem .6rem;font-size:.76rem}
 /* Extra-dense CNN controls: keep the complete three-layer configuration visible. */
 .cnn-builder{margin:.65rem 0;padding:.65rem;border-radius:8px}
 .cnn-builder h3{font-size:1rem;margin:.1rem 0 .2rem}
