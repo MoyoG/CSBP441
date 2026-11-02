@@ -58,6 +58,8 @@
 
   function initProblemQuestions() {
     const host = document.getElementById("problem-questions");
+    if (data.cnnArchitectureBuilder) host.insertAdjacentHTML("beforebegin", '<div id="cnn-architecture-builder" class="cnn-builder"><p class="eyebrow">Interactive CNN architecture</p><h3>Configure a three-layer CNN</h3><p>Change the input size, kernels, kernel size, stride, padding, pooling, and batch normalization.</p><div class="cnn-controls"><label>Input height<input data-cnn="ih" type="number" value="32" min="1"></label><label>Input width<input data-cnn="iw" type="number" value="32" min="1"></label><label>Input channels<input data-cnn="ic" type="number" value="3" min="1"></label></div>' + [0,1,2].map(function(i){return '<fieldset><legend>Conv layer '+(i+1)+'</legend><div class="cnn-controls"><label>Kernels<input data-cnn="k'+i+'" type="number" value="'+[8,16,32][i]+'" min="1"></label><label>Kernel size<input data-cnn="s'+i+'" type="number" value="3" min="1"></label><label>Stride<input data-cnn="st'+i+'" type="number" value="1" min="1"></label><label>Padding<input data-cnn="p'+i+'" type="number" value="1" min="0"></label><label><input data-cnn="pool'+i+'" type="checkbox" '+(i>0?'checked':'')+'> Pooling</label><label>Pool size<input data-cnn="ps'+i+'" type="number" value="2" min="1"></label><label>Pool stride<input data-cnn="pst'+i+'" type="number" value="2" min="1"></label><label><input data-cnn="bn'+i+'" type="checkbox" '+(i===1?'checked':'')+'> Batch normalization</label></div></fieldset>';}).join('') + '<button class="button button-primary" id="calculate-cnn">Calculate architecture</button><div id="cnn-results" aria-live="polite"></div></div>');
+    initCnnArchitectureBuilder();
     host.innerHTML = data.problemQuestions.map((item, i) => `<article class="problem-card"><p class="eyebrow">Problem ${i+1}</p><h3>${esc(item[0])}</h3><p>${esc(item[1])}</p><button class="button button-secondary problem-solution-toggle" type="button">Show solution approach</button><div class="problem-solution" hidden><p>${esc(item[2])}</p></div></article>`).join("");
     host.querySelectorAll(".problem-solution-toggle").forEach(button => button.addEventListener("click", () => {
       const solution = button.nextElementSibling;
@@ -65,6 +67,13 @@
       solution.hidden = open;
       button.textContent = open ? "Show solution approach" : "Hide solution approach";
     }));
+  }
+
+  function initCnnArchitectureBuilder() {
+    const host=document.getElementById("cnn-architecture-builder"); if(!host)return;
+    const v=k=>Number(host.querySelector('[data-cnn="'+k+'"]').value), c=k=>host.querySelector('[data-cnn="'+k+'"]').checked;
+    function calculate(){let h=v("ih"),w=v("iw"),ch=v("ic"),total=0,rows=[];[0,1,2].forEach(i=>{const k=v("k"+i),s=v("s"+i),st=v("st"+i),p=v("p"+i),ins=h+'×'+w+'×'+ch,cp=s*s*ch*k+k;total+=cp+(c("bn"+i)?2*k:0);let oh=Math.floor((h-s+2*p)/st)+1,ow=Math.floor((w-s+2*p)/st)+1,desc='Conv '+s+'×'+s+', '+k+' kernels, stride '+st+', padding '+p+(c("bn"+i)?' + BN':'');if(c("pool"+i)){const ps=v("ps"+i),pst=v("pst"+i);oh=Math.floor((oh-ps)/pst)+1;ow=Math.floor((ow-ps)/pst)+1;desc+=' + pool '+ps+'×'+ps+', stride '+pst}rows.push('<tr><td>'+ (i+1)+'</td><td>'+ins+'</td><td>'+desc+'</td><td>'+oh+'×'+ow+'×'+k+'</td><td>'+cp.toLocaleString()+'</td></tr>');h=oh;w=ow;ch=k});host.querySelector('#cnn-results').innerHTML='<h3>Computed CNN architecture</h3><div class="table-scroll"><table class="results-table"><thead><tr><th>Layer</th><th>Input</th><th>Configuration</th><th>Output</th><th>Conv parameters</th></tr></thead><tbody>'+rows.join('')+'</tbody></table></div><p><strong>Final output volume:</strong> '+h+'×'+w+'×'+ch+'</p><p><strong>Total trainable parameters:</strong> '+total.toLocaleString()+' including biases and enabled BN scale/shift.</p>'}
+    host.querySelector('#calculate-cnn').addEventListener('click',calculate);host.querySelectorAll('[data-cnn]').forEach(x=>x.addEventListener('change',calculate));calculate();
   }
 
   function initXorTrainer() {
