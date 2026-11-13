@@ -695,7 +695,7 @@ window.COURSE_DATA = {
       {q:"A SIFT descriptor describes the entire image with one global average color.",answer:false,why:"It describes local gradient structure around a keypoint."},
       {q:"Descriptor distances can be used to rank possible feature matches.",answer:true,why:"The nearest descriptor is the candidate with the smallest distance."}
     ],
-    problemTypes: [["sift-template","Template matching with SSD"],["sift-ncc","Normalized cross-correlation"],["sift-scale","Scale-space blob detection"],["sift-orientation","Principal orientation histogram"],["sift-descriptor","SIFT descriptor matching"],["yolo-score","YOLO class-specific scores for 4 boxes"]]
+    problemTypes: [["sift-template","Template matching with SSD"],["sift-ncc","Normalized cross-correlation"],["sift-scale","Scale-space blob detection"],["sift-orientation","Principal orientation histogram"],["sift-descriptor","SIFT descriptor matching"]]
   },
   12: {
     short: "YOLO",
@@ -741,7 +741,8 @@ window.COURSE_DATA = {
       ["Confidence score and filtering", "", ""],
       ["NMS threshold decisions", "", ""],
       ["Responsible grid cell", "", ""],
-      ["YOLO loss terms", "", ""]
+      ["YOLO loss terms", "", ""],
+      ["Class-specific scores for four YOLO boxes", "", ""]
     ],
     mcqs: [
       {q:"What additional output does object detection provide beyond image classification?",options:["Only a brighter image","The location of each detected object","Only the image width","A camera calibration matrix"],answer:1,why:"Detection predicts both object categories and their locations, commonly with bounding boxes."},

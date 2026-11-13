@@ -102,6 +102,17 @@
         const yoloTable = (headers, rows, className="") => `<table class="problem-table ${className}"><thead><tr>${headers.map(header=>`<th>${header}</th>`).join("")}</tr></thead><tbody>${rows.map(row=>`<tr>${row.map((cell,i)=>`${i===0 ? `<th>${cell}</th>` : `<td>${cell}</td>`}`).join("")}</tr>`).join("")}</tbody></table>`;
         const s = v % 4;
         switch (index) {
+          case 5: {
+            const objectnessShift=[0.00,0.03,-0.02,0.02][s], iouShift=[0.00,0.03,-0.03,0.02][s];
+            const objectness=[0.80,0.75,0.70,0.85].map(value=>Math.min(0.95,Math.max(0.55,value+objectnessShift)));
+            const iou=[0.65,0.75,0.55,0.80].map(value=>Math.min(0.90,Math.max(0.35,value+iouShift)));
+            const probabilities=[[0.70,0.20,0.10],[0.15,0.70,0.15],[0.10,0.25,0.65],[0.45,0.40,0.15]], names=["Car","Person","Bicycle"];
+            const rows=objectness.map((value,index)=>{const confidence=value*iou[index],scores=probabilities[index].map(probability=>confidence*probability),bestIndex=scores.indexOf(Math.max(...scores));return {box:index+1,objectness:value,iou:iou[index],confidence,scores,best:names[bestIndex]};});
+            const strongest=rows.flatMap(row=>row.scores.map((score,index)=>({box:row.box,className:names[index],score}))).reduce((a,b)=>b.score>a.score?b:a);
+            const inputs=rows.map(row=>[`Box ${row.box}`,row.objectness.toFixed(2),row.iou.toFixed(2),...probabilities[row.box-1].map(value=>value.toFixed(2))]);
+            const outputs=rows.map(row=>[`Box ${row.box}`,row.confidence.toFixed(3),row.scores[0].toFixed(3),row.scores[1].toFixed(3),row.scores[2].toFixed(3),row.best]);
+            return {question:`Calculate the object confidence and the class-specific score for each class for four YOLO candidate boxes. The IoU values have already been computed from the box coordinates.`, questionHTML:`<p>Use <strong>C<sub>j</sub> = Pr(Object) × IoU</strong>, then use <strong>S<sub>j,c</sub> = C<sub>j</sub> × Pr(c|Object)</strong>. The class probabilities are conditional on an object being present.</p>${yoloTable(["Box","Pr(Object)","IoU","Pr(Car|Object)","Pr(Person|Object)","Pr(Bicycle|Object)"],inputs,"yolo-class-score-input-table")}<p>Calculate all three class-specific scores for every box, select the best class per box, and identify the strongest detection overall. Do not apply NMS in this question.</p>`, solution:`Use C<sub>j</sub> = Pr(Object) × IoU, followed by S<sub>j,c</sub> = C<sub>j</sub> × Pr(c|Object).`, solutionHTML:`${yoloTable(["Box","C<sub>j</sub>","Car score","Person score","Bicycle score","Best class"],outputs,"yolo-class-score-output-table")}<p>The strongest class-specific detection is <strong>Box ${strongest.box}, ${strongest.className}</strong> with score <strong>${strongest.score.toFixed(3)}</strong>.</p><p>Object confidence uses objectness and IoU. The class-specific score multiplies that confidence by the conditional class probability.</p>`};
+          }
           case 0: {
             const grid=[3,5,7,9][s], boxesPerCell=2, classes=20, cells=grid*grid, totalBoxes=cells*boxesPerCell, valuesPerCell=boxesPerCell*5+classes, output=cells*valuesPerCell;
             return {question:`For a YOLOv1 output with an S×S grid, B boxes per cell, and C classes, calculate the grid cells, total predicted boxes, predictions per cell, and total output values.`, questionHTML:`<p>Use the YOLOv1 configuration below.</p>${yoloTable(["Input","Value","Meaning"],[["Grid size",`${grid} × ${grid}`,"S × S cells"],["Boxes per cell",boxesPerCell,"B"],["Classes",classes,"C"],["Values per box",5,"x, y, w, h, confidence"]],"yolo-input-table")}<div class="formula-block"><strong>Output formula</strong><br>S × S × (B × 5 + C)</div><ol class="corner-task-list"><li>Count the grid cells.</li><li>Count all predicted boxes.</li><li>Calculate the output size.</li></ol>`, solution:`There are ${cells} grid cells. Total predicted boxes = ${cells}×${boxesPerCell}=${totalBoxes}. Each cell predicts ${boxesPerCell}×5+${classes}=${valuesPerCell} values. Total output size = ${grid}×${grid}×${valuesPerCell}=${output}.`, solutionHTML:`${yoloTable(["Quantity","Calculation","Result"],[["Grid cells",`${grid} × ${grid}`,cells],["Predicted boxes",`${cells} × ${boxesPerCell}`,totalBoxes],["Values per cell",`${boxesPerCell} × 5 + ${classes}`,valuesPerCell],["Total output",`${grid} × ${grid} × ${valuesPerCell}`,output]],"yolo-output-table")}<p>For the original YOLOv1 setting S=7, this becomes 7×7×(2×5+20)=1470 values.</p>`};
@@ -324,7 +335,7 @@
         }
         context.putImageData(pixels, 0, 0);
         const caption = document.createElement("figcaption");
-        caption.textContent = "Channel " + item.channel + " · mean |activation| " + item.score.toFixed(3) + " · " + (isNchw ? "NCHW" : "NHWC");
+        caption.textContent = "Channel " + item.channel + " · " + height + "×" + width + "×" + channels + " · mean |activation| " + item.score.toFixed(3) + " · " + (isNchw ? "NCHW" : "NHWC");
         figure.append(canvas, caption);
         target.append(figure);
       });
@@ -1114,23 +1125,6 @@
       };
       const initial={angles};
       return {level:"Orientation assignment",title:"Find the principal SIFT orientation",question:render(initial).question,solution:render(initial).solution,editor:{kind:"bank",fields:angles.map((value,i)=>({id:`angle${i}`,label:`Gradient angle ${i+1}`,value,step:.5})),solve:v=>render({angles:Array.from({length:12},(_,i)=>v[`angle${i}`])})}};
-    }
-
-    if (type === "yolo-score") {
-      const distributions=[[.70,.20,.10],[.15,.70,.15],[.10,.25,.65],[.45,.45,.10],[.60,.10,.30],[.25,.55,.20]];
-      const predictions=Array.from({length:4},()=>[pick(rng,[.55,.65,.75,.85,.95]),pick(rng,[.35,.45,.55,.65,.75,.85]),...pick(rng,distributions)]);
-      const render=v=>{
-        const names=["Car","Person","Bicycle"];
-        const rows=v.predictions.map((row,index)=>{
-          const objectness=row[0], iou=row[1], probabilities=row.slice(2), confidence=objectness*iou, scores=probabilities.map(value=>confidence*value), bestIndex=scores.indexOf(Math.max(...scores));
-          return {index,objectness,iou,probabilities,confidence,scores,bestIndex};
-        });
-        const table=rows.map(row=>`<tr><td>Box ${row.index+1}</td><td>${fmt(row.objectness)}</td><td>${fmt(row.iou)}</td><td>${fmt(row.confidence)}</td>${row.scores.map((score,i)=>`<td>${fmt(score)}${i===row.bestIndex?" ★":""}</td>`).join("")}<td>${names[row.bestIndex]}</td></tr>`).join("");
-        const strongest=rows.flatMap(row=>row.scores.map((score,i)=>({box:row.index+1,className:names[i],score}))).reduce((a,b)=>b.score>a.score?b:a);
-        return {question:`<p>Four YOLO candidate boxes produce the following values. The columns are <strong>Pr(Object), IoU, Pr(Car|Object), Pr(Person|Object), and Pr(Bicycle|Object)</strong>.</p>${matrixHTML(v.predictions)}<p>For each box calculate object confidence <strong>C<sub>j</sub>=Pr(Object)×IoU</strong>, then calculate each class-specific score <strong>S<sub>j,c</sub>=C<sub>j</sub>×Pr(c|Object)</strong>. Identify the best class for every box and the strongest detection overall.</p>`,solution:`<table class="results-table"><thead><tr><th>Box</th><th>Pr(Object)</th><th>IoU</th><th>C<sub>j</sub></th><th>Car score</th><th>Person score</th><th>Bicycle score</th><th>Best class</th></tr></thead><tbody>${table}</tbody></table><p>The strongest class-specific detection is <strong>Box ${strongest.box}, ${strongest.className}</strong> with score <strong>${fmt(strongest.score)}</strong>.</p><p>Notice the distinction: object confidence uses objectness and IoU, while the class-specific score additionally multiplies by the conditional class probability.</p>`};
-      };
-      const initial={predictions};
-      return {level:"YOLO post-processing",title:"Calculate class-specific YOLO scores",question:render(initial).question,solution:render(initial).solution,editor:{kind:"bank",fields:[{id:"predictions",label:"Four-box YOLO predictions",type:"matrix",value:predictions}],solve:v=>render({predictions:v.predictions})}};
     }
 
     const reference=[int(rng,1,8),int(rng,1,8),int(rng,1,8),int(rng,1,8)].map(value=>value/10);
