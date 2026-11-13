@@ -561,7 +561,7 @@ window.COURSE_DATA = {
     short: "Corners",
     title: "Corner Detection",
     summary: "Use image gradients, the second-moment matrix, eigenvalue reasoning, and the Harris response to distinguish flat regions, edges, and corners.",
-    image: "assets/ln9-cnns.png",
+    image: "assets/ln10-corners.png",
     objectives: [
       "Explain how image gradients describe intensity change in a local region.",
       "Use the second-moment matrix to classify flat, edge-like, and corner-like regions.",
@@ -591,6 +591,15 @@ window.COURSE_DATA = {
       "Non-maximal suppression retains local response maxima and suppresses neighboring weaker responses."
     ],
     notebooks: [],
+    problemIntro: "Attempt each corner-detection problem, then reveal the complete worked solution when you are ready.",
+    problemDomain: "corners",
+    problemQuestions: [
+      ["Eigenvalue classification", "", ""],
+      ["Harris response from M", "", ""],
+      ["Build M from gradient samples", "", ""],
+      ["Non-maximal suppression", "", ""],
+      ["Rotational invariance check", "", ""]
+    ],
     mcqs: [
       {q:"What is a corner in an image?",options:["A region with no intensity change","A point where strong intensity changes occur in two directions","A region with change in only one direction","A point with maximum brightness"],answer:1,why:"A corner has significant local variation along two different directions."},
       {q:"What does the image gradient (I_x,I_y) describe?",options:["Color names","Local intensity change and its direction","The camera focal length","The number of image channels"],answer:1,why:"The gradient components measure intensity change along the horizontal and vertical image axes."},
