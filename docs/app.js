@@ -38,6 +38,7 @@
           <section class="lecture-section"><p class="eyebrow">Learning outcomes</p><h2>What you should be able to do</h2><ul class="objectives">${data.objectives.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></section>
           <section class="lecture-section" id="concepts"><p class="eyebrow">Theory</p><h2>Important concepts</h2><div class="concept-list">${data.concepts.map((x,i)=>`<details ${i===0?"open":""}><summary>${esc(x[0])}</summary><p>${esc(x[1])}</p></details>`).join("")}</div></section>
           <section class="lecture-section" id="hands-on"><p class="eyebrow">Hands-on material</p><h2>From theory to evidence</h2><div class="workflow">${data.handsOn.map((x,i)=>`<div><span>0${i+1}</span><h3>${esc(x[0])}</h3><p>${esc(x[1])}</p></div>`).join("")}</div></section>
+          ${data.cnnFeatureExplorer ? `<section class="lecture-section" id="feature-hierarchy"><p class="eyebrow">Real CNN evidence</p><h2>From edges to objects</h2><p>Inspect activation maps from a CNN trained on real ImageNet-derived images, then sample intermediate layers from a pretrained ImageNet CNN in your browser.</p><div id="cnn-feature-explorer"></div></section>` : ""}
           ${data.interactiveXor ? `<section class="lecture-section" id="xor-trainer"><p class="eyebrow">Interactive laboratory</p><h2>2–2–1 XOR forward pass and backpropagation</h2><p>Edit the initial weights and biases, choose the number of full-batch epochs, and run the exact XOR training example from the worked document. The learning rate is η=1.</p><div id="xor-trainer-app"></div></section>` : ""}
           ${data.materials ? `<section class="lecture-section" id="materials"><p class="eyebrow">In-class lab</p><h2>${esc(data.materialsTitle || "Calculate the complete Canny pipeline")}</h2><div class="notebook-list">${data.materials.map(x=>`<div class="notebook-item"><div><strong>${esc(x[0])}</strong><p>${esc(x[1])}</p></div><div class="button-row"><a class="button button-primary" href="${esc(x[2])}" download>Download worksheet</a></div></div>`).join("")}</div></section>` : ""}
           <section class="lecture-section" id="notebooks"><p class="eyebrow">Colab</p><h2>Run the notebooks</h2><div class="notebook-list">${data.notebooks.map(x=>`<div class="notebook-item"><div><strong>${esc(x[0])}</strong><p>${esc(x[1])}</p></div><div class="button-row"><a class="button button-primary" target="_blank" rel="noopener" href="${notebookUrl(x[2])}">Open in Colab</a><a class="button button-secondary" href="notebooks/${encodeURIComponent(x[2])}">Download</a></div></div>`).join("")}</div></section>
@@ -51,6 +52,7 @@
     <footer><span>CSBP441 Applied Computer Vision</span><span>LN${ln} ${esc(data.short)}</span></footer>`;
 
   if (data.interactiveXor) initXorTrainer();
+  if (data.cnnFeatureExplorer) initCnnFeatureExplorer();
   initQuiz();
   initTrueFalse();
   if (data.problemQuestions) initProblemQuestions();
@@ -83,6 +85,192 @@
     renderProblems();
     controls.querySelector("#cnn-problem-picker").addEventListener("change",renderProblems);
     controls.querySelector("#new-cnn-variant").addEventListener("click",()=>{variant=Number(controls.querySelector("#cnn-problem-seed").value||0)+1;controls.querySelector("#cnn-problem-seed").value=variant;renderProblems();});
+  }
+
+  function initCnnFeatureExplorer() {
+    const host = document.getElementById("cnn-feature-explorer");
+    if (!host) return;
+    host.innerHTML =
+      "<div class='cnn-hierarchy-strip' aria-label='Typical CNN feature progression'>" +
+        "<div><span>1</span><strong>Edges and colors</strong><small>Local contrast, lines, and simple color changes</small></div>" +
+        "<div><span>2</span><strong>Textures and patterns</strong><small>Repeated edges, curves, and surface structure</small></div>" +
+        "<div><span>3</span><strong>Parts</strong><small>Combinations such as wheels, eyes, or handles</small></div>" +
+        "<div><span>4</span><strong>Objects</strong><small>Evidence used by the final classifier</small></div>" +
+      "</div>" +
+      "<div class='cnn-feature-controls'>" +
+        "<button class='button button-primary' id='load-cnn-features' type='button'>Load pretrained ImageNet CNN</button>" +
+        "<span class='cnn-feature-status' id='cnn-feature-status' aria-live='polite'>The real course activation maps are ready below.</span>" +
+      "</div>" +
+      "<div class='cnn-feature-source'>" +
+        "<figure class='cnn-feature-input'>" +
+          "<p class='eyebrow'>Real input</p>" +
+          "<img id='cnn-feature-input-image' src='assets/imagenette-gas-pump.png' alt='Gas pump image from the Imagenette dataset'>" +
+          "<figcaption>Gas pump image from the course Imagenette lab.</figcaption>" +
+        "</figure>" +
+        "<figure class='cnn-feature-static'>" +
+          "<p class='eyebrow'>Real course CNN: first layer</p>" +
+          "<img src='assets/imagenette-conv1-feature-maps.png' alt='Sixteen first-layer convolution activation maps for a gas pump image'>" +
+          "<figcaption>Stored <code>conv1</code> activations from the course CNN trained on Imagenette. These maps are real numerical outputs from the lab notebook, not a decorative illustration.</figcaption>" +
+        "</figure>" +
+      "</div>" +
+      "<p class='cnn-feature-note'>The live panels below are optional. When loaded, they show raw intermediate activations from MobileNetV1 pretrained on ImageNet. “Edges → textures → parts → objects” is a useful teaching interpretation; individual channels and models do not all have the same semantics.</p>" +
+      "<div class='cnn-feature-live' id='cnn-feature-live' hidden>" +
+        "<p class='eyebrow'>Live pretrained CNN activations</p>" +
+        "<p id='cnn-feature-prediction' class='cnn-feature-prediction' aria-live='polite'></p>" +
+        "<div class='cnn-feature-live-grid'>" +
+          "<section><h3>Early layer · edges and colors</h3><div class='cnn-feature-canvas-grid' id='cnn-feature-early'></div></section>" +
+          "<section><h3>Middle layer · textures and patterns</h3><div class='cnn-feature-canvas-grid' id='cnn-feature-middle'></div></section>" +
+          "<section><h3>Deep layer · parts and object evidence</h3><div class='cnn-feature-canvas-grid' id='cnn-feature-deep'></div></section>" +
+        "</div>" +
+        "<p class='cnn-feature-note'>Each canvas is a selected channel from the model’s actual activation tensor. Channels are selected by mean absolute activation so the panel stays compact.</p>" +
+      "</div>";
+
+    const button = host.querySelector("#load-cnn-features");
+    const status = host.querySelector("#cnn-feature-status");
+    const image = host.querySelector("#cnn-feature-input-image");
+    const live = host.querySelector("#cnn-feature-live");
+    const prediction = host.querySelector("#cnn-feature-prediction");
+    let loading = false;
+
+    function graphNodeNames(graph) {
+      const store = graph && graph.executor && graph.executor.graph && graph.executor.graph.nodes;
+      if (!store) return [];
+      return typeof store.keys === "function" ? Array.from(store.keys()) : Object.keys(store);
+    }
+
+    function findNode(names, patternGroups) {
+      return names.find(name => {
+        const lower = String(name).toLowerCase();
+        return patternGroups.some(group => group.every(token => lower.includes(token)));
+      });
+    }
+
+    function disposeOutput(output) {
+      if (Array.isArray(output)) {
+        output.forEach(item => { if (item && typeof item.dispose === "function") item.dispose(); });
+      } else if (output && typeof output.dispose === "function") {
+        output.dispose();
+      }
+    }
+
+    async function renderFeatureMaps(tensor, target, stageName) {
+      const shape = tensor && tensor.shape ? tensor.shape : [];
+      if (shape.length < 3) return 0;
+      const height = shape[shape.length - 3];
+      const width = shape[shape.length - 2];
+      const channels = shape[shape.length - 1];
+      if (!height || !width || !channels || height * width * channels > 30000000) return 0;
+      const values = await tensor.data();
+      const scores = Array.from({length: channels}, (_, channel) => {
+        let sum = 0;
+        for (let y = 0; y < height; y += 1) {
+          for (let x = 0; x < width; x += 1) {
+            sum += Math.abs(Number(values[(y * width + x) * channels + channel]) || 0);
+          }
+        }
+        return {channel, score: sum / (height * width)};
+      }).sort((a, b) => b.score - a.score).slice(0, 4);
+      target.replaceChildren();
+      scores.forEach(item => {
+        const figure = document.createElement("figure");
+        figure.className = "cnn-feature-map-card";
+        const canvas = document.createElement("canvas");
+        canvas.className = "cnn-feature-map";
+        canvas.width = width;
+        canvas.height = height;
+        canvas.setAttribute("aria-label", stageName + " activation map, channel " + item.channel);
+        const context = canvas.getContext("2d");
+        const pixels = context.createImageData(width, height);
+        let min = Infinity;
+        let max = -Infinity;
+        for (let y = 0; y < height; y += 1) {
+          for (let x = 0; x < width; x += 1) {
+            const value = Number(values[(y * width + x) * channels + item.channel]) || 0;
+            min = Math.min(min, value);
+            max = Math.max(max, value);
+          }
+        }
+        const span = max - min || 1;
+        for (let y = 0; y < height; y += 1) {
+          for (let x = 0; x < width; x += 1) {
+            const value = Number(values[(y * width + x) * channels + item.channel]) || 0;
+            const t = Math.max(0, Math.min(1, (value - min) / span));
+            const offset = (y * width + x) * 4;
+            pixels.data[offset] = Math.round(24 + 225 * t);
+            pixels.data[offset + 1] = Math.round(18 + 220 * Math.max(0, 1 - Math.abs(t - .58) * 1.9));
+            pixels.data[offset + 2] = Math.round(90 + 165 * (1 - t));
+            pixels.data[offset + 3] = 255;
+          }
+        }
+        context.putImageData(pixels, 0, 0);
+        const caption = document.createElement("figcaption");
+        caption.textContent = "Channel " + item.channel + " · mean |activation| " + item.score.toFixed(3);
+        figure.append(canvas, caption);
+        target.append(figure);
+      });
+      return scores.length;
+    }
+
+    function makeInputTensor() {
+      const pixels = tf.browser.fromPixels(image);
+      const resized = tf.image.resizeBilinear(pixels, [224, 224], true);
+      return resized.toFloat().div(127.5).sub(1).expandDims(0);
+    }
+
+    button.addEventListener("click", async () => {
+      if (loading) return;
+      loading = true;
+      button.disabled = true;
+      if (!window.tf || !window.mobilenet) {
+        status.textContent = "The optional TensorFlow.js model is unavailable; the real course maps above remain available.";
+        button.disabled = false;
+        loading = false;
+        return;
+      }
+      status.textContent = "Loading MobileNetV1 pretrained on ImageNet…";
+      try {
+        const model = await window.mobilenet.load({version: 1, alpha: 1.0});
+        const predictions = await model.classify(image, 3);
+        prediction.textContent = "Top-3 classifier output: " + predictions.map(item => item.className + " (" + (item.probability * 100).toFixed(1) + "%)").join(" · ");
+        live.hidden = false;
+        const graph = model.model || model;
+        const names = graphNodeNames(graph);
+        const stages = [
+          {key: "early", label: "early", patterns: [["conv2d_0", "relu6"], ["conv2d_0"]]},
+          {key: "middle", label: "middle", patterns: [["conv2d_5_pointwise", "relu6"], ["conv2d_5_pointwise"], ["conv2d_6_pointwise", "relu6"], ["conv2d_6_pointwise"]]},
+          {key: "deep", label: "deep", patterns: [["conv2d_13_pointwise", "relu6"], ["conv2d_13_pointwise"], ["conv2d_13", "relu6"], ["conv2d_13"]]}
+        ];
+        let input = null;
+        let rendered = 0;
+        try {
+          if (!graph || typeof graph.execute !== "function") throw new Error("internal graph unavailable");
+          input = makeInputTensor();
+          for (const stage of stages) {
+            const nodeName = findNode(names, stage.patterns);
+            const target = host.querySelector("#cnn-feature-" + stage.key);
+            if (!nodeName || !target) continue;
+            const output = graph.execute(input, nodeName);
+            const tensor = Array.isArray(output) ? output[0] : output;
+            if (tensor) rendered += await renderFeatureMaps(tensor, target, stage.label);
+            disposeOutput(output);
+          }
+        } finally {
+          if (input) input.dispose();
+        }
+        if (rendered) {
+          status.textContent = "Loaded MobileNetV1. The live panels show actual intermediate activation tensors; the course conv1 maps remain above for comparison.";
+        } else {
+          status.textContent = "MobileNet loaded and classified the image, but its internal layer names were unavailable in this browser. The real course conv1 maps remain visible above.";
+        }
+      } catch (error) {
+        live.hidden = false;
+        status.textContent = "The pretrained model could not be loaded in this browser. The real course activation maps remain available above.";
+        prediction.textContent = "Live model status: unavailable.";
+      } finally {
+        button.disabled = false;
+        loading = false;
+      }
+    });
   }
 
   function initCnnArchitectureBuilder() {

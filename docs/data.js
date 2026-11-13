@@ -554,6 +554,7 @@ window.COURSE_DATA = {
     trueFalse: (window.LN9_QUESTIONS ? window.LN9_QUESTIONS.trueFalse : []).map(x=>({q:x[0],answer:x[1],why:x[2]})),
     problemQuestions: window.LN9_QUESTIONS ? window.LN9_QUESTIONS.problems : [],
     cnnArchitectureBuilder: true,
+    cnnFeatureExplorer: true,
     problemTypes: [["p01","CNN review problem"]]
   },
   10: {
