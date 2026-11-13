@@ -610,6 +610,7 @@
     if (lecture===5) return generateLN5(type,rng,options);
     if (lecture===6) return generateLN6(type,rng);
     if (lecture===8) return generateLN8(type,rng);
+    if (lecture===11) return generateLN11(type,rng);
     return generateLN7(type,rng);
   }
 
@@ -984,5 +985,91 @@
       {id:"g2w1",label:"Example 2 gradient w₁",value:initial.g2w1,step:.1},{id:"g2w2",label:"Example 2 gradient w₂",value:initial.g2w2,step:.1},{id:"g2b",label:"Example 2 gradient b",value:initial.g2b,step:.1},
       {id:"g3w1",label:"Example 3 gradient w₁",value:initial.g3w1,step:.1},{id:"g3w2",label:"Example 3 gradient w₂",value:initial.g3w2,step:.1},{id:"g3b",label:"Example 3 gradient b",value:initial.g3b,step:.1}
     ],solve:render}};
+  }
+
+  function generateLN11(type,rng) {
+    const clamp = (value,min=0,max=9) => Math.max(min,Math.min(max,value));
+    const matrixSSD = (a,b) => a.reduce((sum,row,r)=>sum+row.reduce((rowSum,value,c)=>rowSum+(value-b[r][c])**2,0),0);
+    const matrixDot = (a,b) => a.reduce((sum,row,r)=>sum+row.reduce((rowSum,value,c)=>rowSum+value*b[r][c],0),0);
+    const matrixEnergy = a => a.reduce((sum,row)=>sum+row.reduce((rowSum,value)=>rowSum+value*value,0),0);
+
+    if (type === "sift-template") {
+      const template=Array.from({length:2},()=>Array.from({length:2},()=>int(rng,1,8)));
+      const patchA=template.map(row=>row.map(value=>clamp(value+int(rng,-2,2))));
+      const patchB=Array.from({length:2},()=>Array.from({length:2},()=>int(rng,0,9)));
+      const patchC=template.map(row=>row.map(value=>clamp(9-value+int(rng,-1,1))));
+      const render=v=>{
+        const candidates=[["A",v.patchA],["B",v.patchB],["C",v.patchC]];
+        const scores=candidates.map(([name,patch])=>({name,score:matrixSSD(v.template,patch)}));
+        const best=scores.reduce((a,b)=>b.score<a.score?b:a);
+        const table=scores.map(item=>`<tr><td>${item.name}</td><td>${item.score}</td><td>${item.name===best.name?"Best match":""}</td></tr>`).join("");
+        return {question:`<p>Use sum of squared differences, <strong>SSD=Σ(t−f)²</strong>, to compare the 2×2 template with each candidate patch. Which candidate is the best match?</p><p><strong>Template</strong>${matrixHTML(v.template)}</p><div><strong>Candidate A</strong>${matrixHTML(v.patchA)} <strong>Candidate B</strong>${matrixHTML(v.patchB)} <strong>Candidate C</strong>${matrixHTML(v.patchC)}</div><p>Template matching selects the candidate with the <strong>smallest</strong> SSD.</p>`,solution:`<table class="results-table"><thead><tr><th>Candidate</th><th>SSD</th><th>Decision</th></tr></thead><tbody>${table}</tbody></table><p>Therefore candidate <strong>${best.name}</strong> is selected because its squared difference is smallest.</p>`};
+      };
+      return {level:"Template matching",title:"Choose a template match with SSD",question:render({template,patchA,patchB,patchC}).question,solution:render({template,patchA,patchB,patchC}).solution,editor:{kind:"bank",fields:[{id:"template",label:"Template",type:"matrix",value:template},{id:"patchA",label:"Candidate A",type:"matrix",value:patchA},{id:"patchB",label:"Candidate B",type:"matrix",value:patchB},{id:"patchC",label:"Candidate C",type:"matrix",value:patchC}],solve:render}};
+    }
+
+    if (type === "sift-ncc") {
+      const template=[[int(rng,1,8),int(rng,1,8),int(rng,1,8),int(rng,1,8)]];
+      const patchA=[template[0].map(value=>clamp(value*pick(rng,[1,1,2])+int(rng,-1,1),0,12))];
+      const patchB=[[int(rng,0,9),int(rng,0,9),int(rng,0,9),int(rng,0,9)]];
+      const patchC=[[...template[0]].reverse().map(value=>clamp(value+int(rng,-2,2),0,12))];
+      const render=v=>{
+        const candidates=[["A",v.patchA],["B",v.patchB],["C",v.patchC]];
+        const scores=candidates.map(([name,patch])=>{const dot=matrixDot(v.template,patch), denom=Math.sqrt(matrixEnergy(v.template)*matrixEnergy(patch));return {name,dot,denom,ncc:denom?dot/denom:0};});
+        const best=scores.reduce((a,b)=>b.ncc>a.ncc?b:a);
+        const table=scores.map(item=>`<tr><td>${item.name}</td><td>${item.dot}</td><td>${fmt(item.denom)}</td><td>${fmt(item.ncc)}</td><td>${item.name===best.name?"Best match":""}</td></tr>`).join("");
+        return {question:`<p>Use the energy-normalized cross-correlation from the lecture: <strong>NCC=Σ(ft)/√(Σf²Σt²)</strong>. Calculate NCC for each 1×4 candidate and select the largest value.</p><p><strong>Template</strong>${matrixHTML(v.template)} <strong>A</strong>${matrixHTML(v.patchA)} <strong>B</strong>${matrixHTML(v.patchB)} <strong>C</strong>${matrixHTML(v.patchC)}</p><p>This normalization reduces the effect of overall intensity or energy differences.</p>`,solution:`<table class="results-table"><thead><tr><th>Candidate</th><th>Σft</th><th>√(Σf²Σt²)</th><th>NCC</th><th>Decision</th></tr></thead><tbody>${table}</tbody></table><p>Candidate <strong>${best.name}</strong> has the highest normalized correlation.</p>`};
+      };
+      return {level:"Normalized matching",title:"Rank candidates with NCC",question:render({template,patchA,patchB,patchC}).question,solution:render({template,patchA,patchB,patchC}).solution,editor:{kind:"bank",fields:[{id:"template",label:"Template",type:"matrix",value:template},{id:"patchA",label:"Candidate A",type:"matrix",value:patchA},{id:"patchB",label:"Candidate B",type:"matrix",value:patchB},{id:"patchC",label:"Candidate C",type:"matrix",value:patchC}],solve:render}};
+    }
+
+    if (type === "sift-scale") {
+      const sigmaBase=pick(rng,[1,2]), sigmas=[sigmaBase,2*sigmaBase,4*sigmaBase], threshold=pick(rng,[5,6,7]), peak=int(rng,threshold+1,12);
+      const neighborhood=()=>Array.from({length:3},()=>Array.from({length:3},()=>int(rng,0,Math.max(1,peak-1))));
+      const previous=neighborhood(), current=neighborhood(), next=neighborhood(); current[1][1]=peak;
+      const render=v=>{
+        const center=v.current[1][1];
+        const neighbors=[v.previous,v.current,v.next].flatMap((matrix,scale)=>matrix.flatMap((row,r)=>row.map((value,c)=>({value,scale,r,c})))).filter(item=>!(item.scale===1&&item.r===1&&item.c===1));
+        const largestNeighbor=Math.max(...neighbors.map(item=>item.value));
+        const detected=center>largestNeighbor && center>v.threshold;
+        const scaleTable=[v.previous,v.current,v.next].map((matrix,i)=>`<tr><td>σ=${v.sigmas[i]}</td><td>${matrix[1][1]}</td><td>${matrix.flat().join(", ")}</td></tr>`).join("");
+        return {question:`<p>These are absolute normalized Laplacian-of-Gaussian responses at three scales. A blob is detected when the center is greater than all 26 neighbors in the 3×3×3 scale-space neighborhood and greater than threshold T=${v.threshold}.</p><table class="results-table"><thead><tr><th>Scale</th><th>Center response</th><th>3×3 responses, row-major</th></tr></thead><tbody>${scaleTable}</tbody></table><p>Determine whether the center is a blob, and if so report its characteristic scale.</p>`,solution:`<p>The center response is <strong>${center}</strong>; the largest of the other 26 responses is <strong>${largestNeighbor}</strong>. Since ${center}>${largestNeighbor} and ${center}>${v.threshold}, the center ${detected?"is":"is not"} a local scale-space maximum.</p><p>${detected?`Blob detected at σ=<strong>${v.sigmas[1]}</strong>, the scale of the center slice.`:"No blob is detected at the center."}</p>`};
+      };
+      const initial={previous,current,next,sigmas,threshold};
+      return {level:"Scale-space extrema",title:"Detect a blob across scale and space",question:render(initial).question,solution:render(initial).solution,editor:{kind:"bank",fields:[{id:"previous",label:"Previous scale responses",type:"matrix",value:previous},{id:"current",label:"Current scale responses",type:"matrix",value:current},{id:"next",label:"Next scale responses",type:"matrix",value:next},{id:"threshold",label:"Detection threshold T",value:threshold,step:1}],solve:v=>render({...v,sigmas})}};
+    }
+
+    if (type === "sift-orientation") {
+      const base=pick(rng,[0,45,90,135,180,225,270,315]);
+      const angles=Array.from({length:12},(_,i)=>((base+int(rng,-18,18)+(i>8?pick(rng,[90,180,270]):0))+3600)%360);
+      const render=v=>{
+        const bins=Array(8).fill(0), assignments=[];
+        v.angles.forEach(raw=>{
+          const angle=((Number(raw)%360)+360)%360, position=angle/45, lower=Math.floor(position)%8, fraction=position-Math.floor(position);
+          if(Math.abs(fraction-.5)<1e-9){bins[lower]+=.5;bins[(lower+1)%8]+=.5;assignments.push(`${fmt(angle)}° → ${lower*45}°/${((lower+1)%8)*45}° (0.5 each)`);}
+          else {const bin=fraction<.5?lower:(lower+1)%8;bins[bin]+=1;assignments.push(`${fmt(angle)}° → ${bin*45}°`);}
+        });
+        const max=Math.max(...bins), principal=bins.map((value,i)=>value===max?i*45:null).filter(value=>value!==null);
+        const table=bins.map((value,i)=>`<tr><td>${i*45}°</td><td>${fmt(value)}</td></tr>`).join("");
+        return {question:`<p>Use the simplified SIFT orientation rule: assign each gradient angle to the nearest 45° orientation bin. If an angle is exactly halfway, split its contribution equally. Angles: <strong>${v.angles.join("°, ")}°</strong>.</p><p>Draw the eight-bin histogram and identify the principal orientation.</p>`,solution:`<table class="results-table"><thead><tr><th>Orientation bin</th><th>Count</th></tr></thead><tbody>${table}</tbody></table><p>Assignments: ${assignments.join("; ")}.</p><p>The highest histogram bin is <strong>${principal.join("° and ")}°</strong>, so this is the principal orientation used to normalize the keypoint.</p>`};
+      };
+      const initial={angles};
+      return {level:"Orientation assignment",title:"Find the principal SIFT orientation",question:render(initial).question,solution:render(initial).solution,editor:{kind:"bank",fields:angles.map((value,i)=>({id:`angle${i}`,label:`Gradient angle ${i+1}`,value,step:.5})),solve:v=>render({angles:Array.from({length:12},(_,i)=>v[`angle${i}`])})}};
+    }
+
+    const reference=[int(rng,1,8),int(rng,1,8),int(rng,1,8),int(rng,1,8)].map(value=>value/10);
+    const candidateA=[...reference].map(value=>clamp(value+int(rng,-2,2)/10,0,1));
+    const candidateB=Array.from({length:4},()=>int(rng,0,10)/10);
+    const candidateC=[...reference].reverse().map(value=>clamp(value+int(rng,-2,2)/10,0,1));
+    const ratioThreshold=pick(rng,[.7,.75,.8]);
+    const render=v=>{
+      const ref=v.reference[0], candidates=[["A",v.candidateA[0]],["B",v.candidateB[0]],["C",v.candidateC[0]]];
+      const distances=candidates.map(([name,vector])=>({name,vector,distance:Math.sqrt(vector.reduce((sum,value,i)=>sum+(value-ref[i])**2,0))})).sort((a,b)=>a.distance-b.distance);
+      const best=distances[0], second=distances[1], ratio=second.distance?best.distance/second.distance:0, accepted=ratio<v.ratioThreshold;
+      const table=distances.map(item=>`<tr><td>${item.name}</td><td>[${item.vector.map(value=>fmt(value)).join(", ")}]</td><td>${fmt(item.distance)}</td><td>${item===best?"Nearest":""}</td></tr>`).join("");
+      return {question:`<p>Use this simplified four-dimensional SIFT descriptor to stand in for a full descriptor. Compute the Euclidean distance from the reference descriptor to candidates A, B, and C. Then apply the ratio test: accept the best match when <strong>d₁/d₂ &lt; ${v.ratioThreshold}</strong>.</p><p><strong>Reference</strong>${matrixHTML(v.reference)} <strong>A</strong>${matrixHTML(v.candidateA)} <strong>B</strong>${matrixHTML(v.candidateB)} <strong>C</strong>${matrixHTML(v.candidateC)}</p>`,solution:`<table class="results-table"><thead><tr><th>Candidate</th><th>Descriptor</th><th>Euclidean distance</th><th>Rank</th></tr></thead><tbody>${table}</tbody></table><p>Best distance d₁=<strong>${fmt(best.distance)}</strong>; second-best distance d₂=<strong>${fmt(second.distance)}</strong>. Ratio = d₁/d₂ = <strong>${fmt(ratio)}</strong>. The match is <strong>${accepted?"accepted":"rejected"}</strong> because ${fmt(ratio)} ${accepted?"<":"≥"} ${v.ratioThreshold}.</p>`};
+    };
+    const initial={reference:[reference],candidateA:[candidateA],candidateB:[candidateB],candidateC:[candidateC],ratioThreshold};
+    return {level:"Descriptor matching",title:"Match simplified SIFT descriptors",question:render(initial).question,solution:render(initial).solution,editor:{kind:"bank",fields:[{id:"reference",label:"Reference descriptor",type:"matrix",value:initial.reference},{id:"candidateA",label:"Candidate A",type:"matrix",value:initial.candidateA},{id:"candidateB",label:"Candidate B",type:"matrix",value:initial.candidateB},{id:"candidateC",label:"Candidate C",type:"matrix",value:initial.candidateC},{id:"ratioThreshold",label:"Ratio threshold",value:initial.ratioThreshold,step:.05}],solve:render}};
   }
 })();

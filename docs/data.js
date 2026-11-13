@@ -635,5 +635,66 @@ window.COURSE_DATA = {
       {q:"The eigenvectors of the second-moment matrix indicate principal directions of local variation.",answer:true,why:"They define the axes of the fitted gradient-distribution ellipse."}
     ],
     problemTypes: []
+  },
+  11: {
+    short: "Object Recognition and SIFT",
+    title: "Object Recognition and SIFT",
+    summary: "Compare template matching with local feature matching, then use scale-space blobs, orientations, and descriptors for recognition.",
+    image: "assets/ln11-sift.png",
+    objectives: [
+      "Distinguish classification, detection, segmentation, recognition, and identification.",
+      "Explain why SSD and normalized cross-correlation respond differently to image variation.",
+      "Describe interest points, blobs, scale-space, the normalized Laplacian of Gaussian, and the Difference of Gaussians.",
+      "Assign a principal orientation and explain how a SIFT descriptor represents local image structure.",
+      "Calculate simplified SIFT matching quantities and discuss applications and limitations."
+    ],
+    concepts: [
+      ["Recognition tasks", "Classification gives an image-level category, detection adds object locations, segmentation labels pixels, and recognition is the broader goal of relating visual evidence to objects."],
+      ["Template matching", "Template matching scans an image and compares each local patch with a template using SSD or normalized cross-correlation."],
+      ["Interest points", "Useful interest points have rich local content, a well-defined position, and a representation that can be compared across images."],
+      ["Blob detection", "Blobs have a stable location and characteristic size. Scale-space responses identify local extrema across both image position and smoothing scale."],
+      ["SIFT detection", "SIFT uses scale-space extrema and a Difference-of-Gaussians approximation to find keypoints efficiently."],
+      ["Orientation and descriptor", "A gradient-direction histogram gives a principal orientation. Local orientation histograms then form a descriptor that supports matching under rotation, scale, and moderate lighting changes."]
+    ],
+    handsOn: [
+      ["Compare", "Calculate SSD and normalized correlation for small template candidates."],
+      ["Detect", "Inspect a 3×3×3 scale-space neighborhood and test for a blob maximum."],
+      ["Orient", "Build a simplified gradient-direction histogram and select the principal orientation."],
+      ["Match", "Compute descriptor distances and apply a nearest-neighbor ratio test."]
+    ],
+    recap: "SIFT replaces fragile whole-template comparison with distinctive local features. It detects blobs across scale, assigns a principal orientation, builds a local gradient descriptor, and matches descriptors across images.",
+    takeaways: [
+      "Template matching is sensitive to scale, rotation, lighting, and occlusion.",
+      "SSD selects the smallest difference, while normalized correlation selects the largest similarity.",
+      "Scale-space extrema identify blob-like keypoints at characteristic scales.",
+      "The Difference of Gaussians provides a faster approximation to the normalized Laplacian of Gaussian.",
+      "SIFT uses a principal orientation and local gradient-direction histograms to support robust matching."
+    ],
+    notebooks: [],
+    mcqs: [
+      {q:"Which task assigns one category to the whole image without locating individual objects?",options:["Image classification","Object detection","Semantic segmentation","Identification"],answer:0,why:"Classification produces an image-level class label."},
+      {q:"For SSD template matching, which candidate is selected?",options:["The candidate with the largest SSD","The candidate with the smallest SSD","The candidate with the highest average brightness","The candidate nearest the image border"],answer:1,why:"SSD measures squared difference, so a smaller value means a closer match."},
+      {q:"Normalized cross-correlation mainly reduces sensitivity to:",options:["Overall energy or brightness scaling","The number of image rows","The descriptor length","The camera frame rate"],answer:0,why:"The normalization divides by the template and patch energies."},
+      {q:"Why are rich textured regions useful as interest points?",options:["They contain distinctive local information","They always have zero gradient","They are identical in every image","They do not need a position"],answer:0,why:"Distinctive local structure makes a point easier to locate and match."},
+      {q:"Why is a blob a useful interest point?",options:["It has no characteristic size","It has a well-defined location and size","It contains no intensity variation","It is always a straight edge"],answer:1,why:"A blob has localized structure with a stable position and characteristic scale."},
+      {q:"How are blobs detected in scale-space?",options:["By selecting every bright pixel","By finding local extrema across position and scale","By sorting image rows","By measuring only image width"],answer:1,why:"A scale-space extremum is larger than neighboring spatial pixels and neighboring scales."},
+      {q:"The Difference of Gaussians is used in SIFT as:",options:["A color-conversion rule","A fast approximation to the normalized Laplacian of Gaussian","A loss function for classification","A camera calibration matrix"],answer:1,why:"DoG approximates the scale-normalized LoG response efficiently."},
+      {q:"How does SIFT choose a principal orientation?",options:["From a histogram of local gradient directions","From the image file name","From the largest RGB channel only","From the camera focal length"],answer:0,why:"The dominant bin in the local gradient-direction histogram gives the orientation."},
+      {q:"A SIFT descriptor is built mainly from:",options:["Global image color averages","Local gradient-direction histograms","Bounding-box coordinates only","Raw pixel locations without gradients"],answer:1,why:"SIFT summarizes local gradient directions over spatial regions."},
+      {q:"Which is a practical application of SIFT matching?",options:["Changing an image from RGB to grayscale only","Panorama stitching","Counting image bits","Increasing aperture size"],answer:1,why:"Matched local features can align overlapping images for panorama construction."}
+    ],
+    trueFalse: [
+      {q:"Template matching is naturally invariant to arbitrary rotation and scale changes.",answer:false,why:"A rotated or resized object may no longer align with the fixed template."},
+      {q:"SSD template matching prefers the candidate with the lowest score.",answer:true,why:"The score is a sum of squared differences."},
+      {q:"Normalized cross-correlation can reduce the effect of overall energy differences.",answer:true,why:"The normalization divides by the energies of the patch and template."},
+      {q:"A flat patch is usually a strong interest point because it has many distinctive gradients.",answer:false,why:"Flat patches provide little local information and are ambiguous to match."},
+      {q:"A blob can have a characteristic scale that helps identify its size.",answer:true,why:"Its normalized scale-space response peaks at a characteristic smoothing scale."},
+      {q:"SIFT searches only within one image scale.",answer:false,why:"SIFT searches extrema across both image location and scale."},
+      {q:"The Difference of Gaussians is used as a faster approximation to the normalized LoG.",answer:true,why:"Subtracting nearby Gaussian scales approximates a scale-space derivative."},
+      {q:"The principal orientation helps SIFT compensate for image rotation.",answer:true,why:"The local descriptor can be aligned relative to the dominant orientation."},
+      {q:"A SIFT descriptor describes the entire image with one global average color.",answer:false,why:"It describes local gradient structure around a keypoint."},
+      {q:"Descriptor distances can be used to rank possible feature matches.",answer:true,why:"The nearest descriptor is the candidate with the smallest distance."}
+    ],
+    problemTypes: [["sift-template","Template matching with SSD"],["sift-ncc","Normalized cross-correlation"],["sift-scale","Scale-space blob detection"],["sift-orientation","Principal orientation histogram"],["sift-descriptor","SIFT descriptor matching"]]
   }
 };
