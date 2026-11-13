@@ -122,8 +122,35 @@
             return {question:`Calculate the YOLO confidence score and decide whether the box passes a confidence threshold of ${threshold}.`, questionHTML:`<p>YOLO combines the model's objectness estimate with the intersection-over-union (IoU) between the predicted and ground-truth boxes.</p>${yoloTable(["Input","Value","Meaning"],[["Objectness",objectness.toFixed(2),"Pr(Object)"],["IoU",iou.toFixed(2),"Overlap with ground truth"],["Threshold",threshold.toFixed(2),"Keep if score ≥ threshold"]],"yolo-input-table")}<div class="formula-block"><strong>Confidence score</strong><br>Score = Pr(Object) × IoU</div><p>Compute the score and decide whether confidence filtering keeps the box.</p>`, solution:`Score = ${objectness.toFixed(2)}×${iou.toFixed(2)}=${score.toFixed(2)}. Since ${score.toFixed(2)} ${score>=threshold?"≥":"<"} ${threshold.toFixed(2)}, the box is ${decision} by confidence filtering.`, solutionHTML:`<p><strong>Score:</strong> ${objectness.toFixed(2)} × ${iou.toFixed(2)} = <strong>${score.toFixed(2)}</strong></p><p><strong>Decision:</strong> ${score.toFixed(2)} ${score>=threshold?"≥":"<"} ${threshold.toFixed(2)}, so the box is <strong>${decision}</strong>.</p>`};
           }
           case 2: {
-            const boxIoU=0.40+0.05*s, thresholds=[0.30,0.50,0.70];
-            return {question:`Apply standard non-maximum suppression to two boxes and determine whether Box B survives at each threshold.`, questionHTML:`<p>Box A has the higher score, so compare Box B with A using their IoU.</p>${yoloTable(["Box","Score","IoU with A"],[["A","0.88","1.00"],["B","0.80",boxIoU.toFixed(2)]],"yolo-input-table")}${yoloTable(["NMS threshold","Decision rule","Your decision"],thresholds.map(threshold=>[threshold.toFixed(2),`Suppress B if IoU > ${threshold.toFixed(2)}`,"?"]),"yolo-threshold-table")}<p>Complete the decision column for each threshold.</p>`, solution:`At threshold 0.30, ${boxIoU.toFixed(2)}>0.30, so suppress B. At threshold 0.50, ${boxIoU.toFixed(2)} ${boxIoU>0.50?">":"≤"} 0.50, so ${boxIoU>0.50?"suppress":"keep"} B. At threshold 0.70, ${boxIoU.toFixed(2)}≤0.70, so keep B. A lower threshold makes suppression more aggressive.`, solutionHTML:`${yoloTable(["NMS threshold","IoU comparison","Decision"],thresholds.map(threshold=>[threshold.toFixed(2),`${boxIoU.toFixed(2)} ${boxIoU>threshold?">":"≤"} ${threshold.toFixed(2)}`,boxIoU>threshold?"Suppress B":"Keep B"]),"yolo-threshold-table")}<p>Lower thresholds suppress more overlapping boxes. Higher thresholds allow more overlap to remain.</p>`};
+            const variants=[
+              {label:"mixed overlaps",scores:[0.90,0.82,0.76,0.68,0.60],iou:[[1,.65,.20,.10,.05],[.65,1,.55,.15,.05],[.20,.55,1,.45,.25],[.10,.15,.45,1,.60],[.05,.05,.25,.60,1]]},
+              {label:"two different overlap groups",scores:[0.92,0.86,0.78,0.71,0.64],iou:[[1,.35,.10,.05,.05],[.35,1,.65,.20,.05],[.10,.65,1,.25,.10],[.05,.20,.25,1,.55],[.05,.05,.10,.55,1]]},
+              {label:"strong first pair and late overlap",scores:[0.88,0.81,0.79,0.72,0.66],iou:[[1,.68,.18,.08,.04],[.68,1,.28,.12,.06],[.18,.28,1,.45,.30],[.08,.12,.45,1,.55],[.04,.06,.30,.55,1]]},
+              {label:"crossing overlap groups",scores:[0.93,0.84,0.73,0.69,0.61],iou:[[1,.25,.60,.10,.05],[.25,1,.30,.65,.10],[.60,.30,1,.20,.58],[.10,.65,.20,1,.35],[.05,.10,.58,.35,1]]}
+            ];
+            const profile=variants[s], names=["A","B","C","D","E"], thresholds=[0.30,0.50,0.70], scores=profile.scores, iou=profile.iou;
+            const applyNms=threshold=>{
+              let remaining=scores.map((_,index)=>index).sort((a,b)=>scores[b]-scores[a]);
+              const kept=[], suppressed=[];
+              while(remaining.length){
+                const current=remaining.shift(); kept.push(current);
+                const next=[];
+                remaining.forEach(candidate=>{
+                  const overlap=iou[current][candidate];
+                  if(overlap>threshold) suppressed.push({box:candidate,by:current,overlap});
+                  else next.push(candidate);
+                });
+                remaining=next;
+              }
+              return {kept,suppressed};
+            };
+            const inputRows=names.map((name,row)=>[name,scores[row].toFixed(2),...names.map((_,column)=>row===column?"—":iou[row][column].toFixed(2))]);
+            const scenarioRows=thresholds.map((threshold,index)=>{
+              const result=applyNms(threshold), kept=result.kept.map(box=>names[box]).join(", ");
+              const suppressed=result.suppressed.length?result.suppressed.map(item=>`${names[item.box]} by ${names[item.by]} (IoU ${item.overlap.toFixed(2)})`).join("; "):"None";
+              return [["Aggressive","Moderate","Permissive"][index],threshold.toFixed(2),kept,suppressed];
+            });
+            return {question:`Apply standard non-maximum suppression to five candidate boxes and compare the result at three IoU thresholds.`, questionHTML:`<p><strong>Scenario: ${esc(profile.label)}</strong>. Sort boxes from highest to lowest score. Keep the highest-scoring remaining box, then suppress a lower-scoring box when its IoU with a kept box is <strong>greater than</strong> the NMS threshold.</p>${yoloTable(["Box","Score","IoU with A","IoU with B","IoU with C","IoU with D","IoU with E"],inputRows,"yolo-input-table")}${yoloTable(["Scenario","NMS threshold","Kept boxes","Your suppressed boxes"],scenarioRows.map(row=>[row[0],row[1],"?","?"]),"yolo-threshold-table")}<p>Complete the kept and suppressed columns for each threshold. The three rows illustrate aggressive, moderate, and permissive NMS.</p>`, solution:`Sort by score: A, B, C, D, E. Apply greedy NMS at each threshold. A lower threshold suppresses more overlapping boxes, while a higher threshold allows more boxes to remain.`, solutionHTML:`${yoloTable(["Scenario","NMS threshold","Kept boxes","Suppressed boxes (reason)"],scenarioRows,"yolo-threshold-solution-table")}<p>Each suppression is made only against a box that has already survived. Therefore the surviving set can change as the threshold changes: lower thresholds are more aggressive, while higher thresholds are more permissive.</p>`};
           }
           case 3: {
             const grid=7, x=[0.18,0.31,0.63,0.82][s], y=[0.22,0.41,0.28,0.74][s], column=Math.floor(grid*x)+1, row=Math.floor(grid*y)+1;
