@@ -555,5 +555,75 @@ window.COURSE_DATA = {
     problemQuestions: window.LN9_QUESTIONS ? window.LN9_QUESTIONS.problems : [],
     cnnArchitectureBuilder: true,
     problemTypes: [["p01","CNN review problem"]]
+  },
+  10: {
+    short: "Corners",
+    title: "Corner Detection",
+    summary: "Use image gradients, the second-moment matrix, eigenvalue reasoning, and the Harris response to distinguish flat regions, edges, and corners.",
+    image: "assets/ln9-cnns.png",
+    objectives: [
+      "Explain how image gradients describe intensity change in a local region.",
+      "Use the second-moment matrix to classify flat, edge-like, and corner-like regions.",
+      "Interpret eigenvalues, eigenvectors, trace, determinant, and the Harris response.",
+      "Explain rotational invariance and non-maximal suppression in corner detection."
+    ],
+    concepts: [
+      ["Image gradients", "The pair (I_x,I_y) records local intensity change. A flat region has small gradients, an edge has strong change in one direction, and a corner has strong change in two directions."],
+      ["Gradient distribution", "A window of gradient vectors summarizes the local region. Fitting an ellipse to this distribution reveals the dominant directions and the amount of variation."],
+      ["Second-moment matrix", "M aggregates products of local gradients over a window. Its eigenvalues measure variation along the principal directions of the region."],
+      ["Eigenvalue interpretation", "Two small eigenvalues indicate a flat region, one large and one small eigenvalue indicate an edge, and two large eigenvalues indicate a corner."],
+      ["Harris response", "R = det(M) - k(trace(M))² uses determinant and trace as a fast, rotation-invariant substitute for explicitly computing eigenvalues."],
+      ["Non-maximal suppression", "A sliding window retains a response only when its center is the local maximum. This reduces clusters of nearby detections to strong corner candidates."]
+    ],
+    handsOn: [
+      ["Classify", "Given pairs of eigenvalues, label each region as flat, edge-like, or corner-like."],
+      ["Calculate", "Compute trace, determinant, and Harris response for a small second-moment matrix."],
+      ["Interpret", "Relate an ellipse's axes and orientation to the gradient distribution."],
+      ["Suppress", "Apply a windowed maximum test to a corner-response map."]
+    ],
+    recap: "Corner detection identifies locations with strong intensity variation in two directions. The second-moment matrix captures that variation, while the Harris response and non-maximal suppression produce practical corner candidates.",
+    takeaways: [
+      "Flat regions have two small eigenvalues, edge-like regions have one large eigenvalue, and corner-like regions have two large eigenvalues.",
+      "The eigenvectors give the principal directions of the local gradient distribution.",
+      "The determinant is the product of the eigenvalues and the trace is their sum.",
+      "Harris uses det(M) - k(trace(M))² and remains unchanged when the coordinate system rotates.",
+      "Non-maximal suppression retains local response maxima and suppresses neighboring weaker responses."
+    ],
+    notebooks: [],
+    mcqs: [
+      {q:"What is a corner in an image?",options:["A region with no intensity change","A point where strong intensity changes occur in two directions","A region with change in only one direction","A point with maximum brightness"],answer:1,why:"A corner has significant local variation along two different directions."},
+      {q:"What does the image gradient (I_x,I_y) describe?",options:["Color names","Local intensity change and its direction","The camera focal length","The number of image channels"],answer:1,why:"The gradient components measure intensity change along the horizontal and vertical image axes."},
+      {q:"Which region usually produces two small eigenvalues of the second-moment matrix?",options:["Flat region","Edge region","Corner region","A saturated region only"],answer:0,why:"A flat region has little gradient variation in either principal direction."},
+      {q:"Which eigenvalue pattern is most characteristic of an edge?",options:["Both small","One large and one small","Both large and equal to zero","One negative and one positive"],answer:1,why:"An edge changes strongly in one direction but weakly along the edge."},
+      {q:"Which eigenvalue pattern is most characteristic of a corner?",options:["Both small","One large and one small","Both large","Both negative"],answer:2,why:"A corner has strong intensity variation in two principal directions."},
+      {q:"What does an eigenvector of the second-moment matrix represent?",options:["A principal direction of local variation","The image bit depth","The window size","The Harris constant k"],answer:0,why:"Eigenvectors identify the directions associated with the matrix's eigenvalues."},
+      {q:"For a 2×2 matrix, the determinant equals:",options:["The sum of the eigenvalues","The product of the eigenvalues","The largest eigenvalue only","The window area"],answer:1,why:"The determinant is the product of the eigenvalues."},
+      {q:"For a 2×2 matrix, the trace equals:",options:["The product of the eigenvalues","The sum of the eigenvalues","The square of the determinant","The gradient magnitude"],answer:1,why:"The trace equals the sum of the diagonal entries and also the sum of the eigenvalues."},
+      {q:"The Harris corner response is commonly written as:",options:["R=det(M)-k(trace(M))²","R=trace(M)-det(M)²","R=I_x+I_y","R=det(M)+trace(M)"],answer:0,why:"Harris combines determinant and squared trace to favor two-dimensional variation."},
+      {q:"Why does Harris use determinant and trace instead of explicitly computing eigenvalues?",options:["They are rotationally invariant and cheaper to compute","They remove all image noise","They always equal the gradient components","They make every region a corner"],answer:0,why:"Both quantities remain unchanged under a rotation of coordinates and avoid a full eigendecomposition."},
+      {q:"A large positive Harris response generally indicates:",options:["A flat region","A strong corner candidate","A region with no pixels","A guaranteed edge endpoint"],answer:1,why:"A positive response occurs when both principal variations are sufficiently large."},
+      {q:"What does non-maximal suppression do?",options:["Retains every response","Retains a response only if it is the local maximum in a window","Sets all responses to zero","Computes eigenvectors"],answer:1,why:"The center survives only when no neighbor in the window has a larger response."},
+      {q:"Why is the gradient distribution represented with an ellipse?",options:["The ellipse summarizes spread and principal directions","It converts pixels to RGB","It removes the need for a window","It guarantees a circular corner"],answer:0,why:"The ellipse captures the distribution's orientation and spread along its principal axes."},
+      {q:"If both eigenvalues are near zero, the local region is best described as:",options:["Flat","A corner","A strong diagonal edge","A maximum response"],answer:0,why:"Near-zero variation in both directions indicates a flat region."},
+      {q:"If one eigenvalue is large and the other is near zero, the local region is best described as:",options:["Flat","Edge-like","Corner-like","Uniformly varying in two directions"],answer:1,why:"The region varies strongly in one direction and weakly in the other."},
+      {q:"If the center of a response window is not the largest value, non-maximal suppression will:",options:["Retain it","Suppress it","Double it","Recompute the image gradient"],answer:1,why:"Only local maxima are retained."},
+      {q:"What does rotating the image coordinate system do to the eigenvalues of M?",options:["It changes them arbitrarily","It leaves them unchanged","It sets them to zero","It swaps them with image intensities"],answer:1,why:"Eigenvalues describe intrinsic variation and are invariant under a coordinate rotation."},
+      {q:"The constant k in the Harris response controls:",options:["The balance between determinant and trace terms","The image width","The number of eigenvectors","The non-maximal window's pixel values"],answer:0,why:"k weights the squared-trace penalty relative to the determinant."},
+      {q:"Which operation is performed before classifying a region with the second-moment matrix?",options:["Aggregate local gradient products over a window","Convert every pixel to a label","Sort all image rows","Apply non-maximal suppression to raw pixels"],answer:0,why:"The matrix summarizes gradient products over a local neighborhood."},
+      {q:"What is the main purpose of non-maximal suppression in corner detection?",options:["Produce a single strong candidate near each response peak","Increase the number of image channels","Estimate focal length","Compute the determinant"],answer:0,why:"Suppression removes nearby weaker responses and makes detections more localized."}
+    ],
+    trueFalse: [
+      {q:"A flat region has little intensity variation in both image directions.",answer:true,why:"Both gradient directions are weak in a flat region."},
+      {q:"An edge-like region usually has strong variation in one principal direction and weak variation in the other.",answer:true,why:"This produces one large and one small eigenvalue."},
+      {q:"A corner-like region has two small eigenvalues.",answer:false,why:"A corner-like region has two large eigenvalues."},
+      {q:"The second-moment matrix is built from local image-gradient products.",answer:true,why:"It aggregates terms such as I_x², I_xI_y, and I_y² over a window."},
+      {q:"The determinant of M equals the sum of its eigenvalues.",answer:false,why:"The determinant is their product; the trace is their sum."},
+      {q:"The trace and determinant of a matrix remain unchanged under a rotation of coordinates.",answer:true,why:"They are rotationally invariant quantities."},
+      {q:"Harris response uses only the largest eigenvalue.",answer:false,why:"It combines determinant and squared trace, which depend on both eigenvalues."},
+      {q:"A large positive Harris response is associated with a corner candidate.",answer:true,why:"The response becomes positive when both directions have strong variation."},
+      {q:"Non-maximal suppression retains every pixel above a fixed threshold, even if a neighbor is larger.",answer:false,why:"It suppresses a response when a larger value exists in the local window."},
+      {q:"The eigenvectors of the second-moment matrix indicate principal directions of local variation.",answer:true,why:"They define the axes of the fitted gradient-distribution ellipse."}
+    ],
+    problemTypes: []
   }
 };
