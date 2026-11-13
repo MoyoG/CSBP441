@@ -696,5 +696,87 @@ window.COURSE_DATA = {
       {q:"Descriptor distances can be used to rank possible feature matches.",answer:true,why:"The nearest descriptor is the candidate with the smallest distance."}
     ],
     problemTypes: [["sift-template","Template matching with SSD"],["sift-ncc","Normalized cross-correlation"],["sift-scale","Scale-space blob detection"],["sift-orientation","Principal orientation histogram"],["sift-descriptor","SIFT descriptor matching"]]
+  },
+  12: {
+    short: "YOLO",
+    title: "YOLO Object Detection",
+    summary: "Understand how YOLO predicts bounding boxes, objectness, and class probabilities in one forward pass, then filter and suppress overlapping detections.",
+    image: "assets/ln12-yolo.png",
+    objectives: [
+      "Distinguish object detection from image classification.",
+      "Explain YOLOv1's S×S grid, B boxes per cell, and output size S×S×(5B+C).",
+      "Calculate confidence scores from objectness and intersection-over-union.",
+      "Apply confidence filtering, standard NMS, and class-aware NMS.",
+      "Identify which YOLO loss terms apply when an object is present or absent."
+    ],
+    concepts: [
+      ["Detection versus classification", "Classification assigns labels to an image. Object detection also locates each object with a bounding box."],
+      ["Two-stage detectors", "Earlier region-based systems generated candidate regions, classified them separately, and refined their boxes. R-CNN used about 2,000 proposals from Selective Search."],
+      ["One-pass prediction", "YOLO processes the whole image with one neural network forward pass. One pass can still predict many boxes."],
+      ["Grid and boxes", "YOLOv1 divides the image into an S×S grid. Each cell predicts B boxes, five values per box, and shared class probabilities for the cell."],
+      ["Confidence and IoU", "A box confidence combines the model's objectness estimate with its overlap with the ground-truth box: confidence = Pr(Object)×IoU."],
+      ["Filtering and NMS", "Confidence filtering removes weak boxes. Non-maximum suppression keeps a high-scoring box and suppresses overlapping boxes according to an IoU threshold."],
+      ["YOLOv1 trade-offs", "Large receptive fields and center-based cell responsibility help detect large objects. The model can struggle with multiple small objects close together and trades some localization accuracy for speed."]
+    ],
+    handsOn: [
+      ["Count", "Calculate grid cells, predicted boxes, values per cell, and the complete YOLOv1 output size."],
+      ["Score", "Compute object confidence from objectness and IoU, then apply a confidence threshold."],
+      ["Suppress", "Compare box scores and IoU values under several NMS thresholds."],
+      ["Trace", "Assign an object to the grid cell containing its center and identify the active loss terms."]
+    ],
+    recap: "YOLO turns object detection into one unified prediction problem. A grid predicts boxes and class probabilities, while confidence filtering and NMS turn raw predictions into a practical set of detections.",
+    takeaways: [
+      "Object detection predicts both what an object is and where it is.",
+      "YOLOv1 output size is S×S×(B×5+C), with five values for each predicted box.",
+      "One forward pass can produce many candidate boxes across the grid.",
+      "Confidence filtering uses a score threshold, while NMS uses IoU to remove duplicate boxes.",
+      "Lower NMS thresholds suppress more aggressively, and class-aware NMS compares boxes within the same class.",
+      "YOLOv1 is fast but can lose localization accuracy and struggle with nearby small objects."
+    ],
+    notebooks: [],
+    problemIntro: "Attempt each YOLO problem, then reveal the complete worked solution when you are ready.",
+    problemDomain: "yolo",
+    problemQuestions: [
+      ["YOLOv1 output dimensions", "", ""],
+      ["Confidence score and filtering", "", ""],
+      ["NMS threshold decisions", "", ""],
+      ["Responsible grid cell", "", ""],
+      ["YOLO loss terms", "", ""]
+    ],
+    mcqs: [
+      {q:"What additional output does object detection provide beyond image classification?",options:["Only a brighter image","The location of each detected object","Only the image width","A camera calibration matrix"],answer:1,why:"Detection predicts both object categories and their locations, commonly with bounding boxes."},
+      {q:"What did a typical two-stage detector do before classification?",options:["Generate candidate regions","Remove all image colors","Predict only one class for the whole image","Skip localization"],answer:0,why:"Two-stage detectors first generated candidate regions and then classified and refined them."},
+      {q:"How many candidate regions did the lecture associate with the original R-CNN pipeline?",options:["About 2","About 20","About 200","About 2,000"],answer:3,why:"R-CNN used a region-proposal method that generated approximately 2,000 candidate regions per image."},
+      {q:"What is the central idea of YOLO?",options:["Run a classifier separately on every crop","Use one neural network to process the whole image at once","Detect only image edges","Replace boxes with a single class label"],answer:1,why:"YOLO predicts boxes, objectness, and class probabilities from the whole image in one forward pass."},
+      {q:"For S=7, how many grid cells does YOLOv1 create?",options:["7","14","49","70"],answer:2,why:"A 7×7 grid contains 49 cells."},
+      {q:"If each grid cell predicts B=2 boxes, how many boxes does a 7×7 grid predict before filtering?",options:["14","49","98","1470"],answer:2,why:"There are 49 cells and 2 boxes per cell, so 49×2=98 candidate boxes."},
+      {q:"Which five values belong to each YOLOv1 box prediction?",options:["x, y, width, height, confidence","red, green, blue, hue, saturation","class, IoU, NMS, mAP, loss","row, column, stride, padding, channel"],answer:0,why:"Each box predicts center position, width, height, and confidence."},
+      {q:"What does C represent in the YOLOv1 output formula S×S×(B×5+C)?",options:["The number of image channels","The number of classes","The number of candidate regions","The confidence threshold"],answer:1,why:"C is the number of object classes and the class probabilities are shared by the grid cell."},
+      {q:"For S=7, B=2, and C=20, what is the YOLOv1 output size?",options:["7×7×20","7×7×25","7×7×30=1470","7×7×40=1960"],answer:2,why:"Each cell predicts 2×5+20=30 values, so 7×7×30=1470."},
+      {q:"How is the confidence score illustrated in the lecture calculated?",options:["Pr(Object)+IoU","Pr(Object)×IoU","Pr(Object)−IoU","IoU divided by the number of classes"],answer:1,why:"The lecture multiplies the object's probability by the overlap with the ground-truth box."},
+      {q:"If Pr(Object)=0.8 and IoU=0.58, what is the approximate confidence score?",options:["0.046","0.46","1.38","8.58"],answer:1,why:"0.8×0.58=0.464, which rounds to 0.46."},
+      {q:"What does confidence filtering do?",options:["Remove boxes whose score is below a chosen threshold","Increase the grid size","Assign a new class to every box","Compute the convolutional features again"],answer:0,why:"Filtering removes weak candidate detections before later processing."},
+      {q:"What does standard NMS use to compare overlapping boxes?",options:["IoU and box scores","Only image brightness","Only the number of classes","The focal length"],answer:0,why:"NMS keeps the higher-scoring box and uses IoU to decide whether another box overlaps too much."},
+      {q:"Box A has the higher score, IoU(A,B)=0.40, and the NMS threshold is 0.30. What happens to B?",options:["B is kept because 0.40 is positive","B is suppressed because 0.40>0.30","A is suppressed because it is first","Both boxes are always removed"],answer:1,why:"When the IoU exceeds the threshold, NMS suppresses the lower-scoring box B."},
+      {q:"With IoU(A,B)=0.40 and NMS threshold 0.50, what happens to B?",options:["B is suppressed because 0.40<0.50","B is kept because 0.40<0.50","A is removed","The grid cell is deleted"],answer:1,why:"The overlap does not exceed the threshold, so B remains under this rule."},
+      {q:"What is the effect of lowering the NMS threshold?",options:["Less aggressive suppression and more overlapping boxes","More aggressive suppression and fewer boxes","No change in suppression","More classes per grid cell"],answer:1,why:"A lower threshold is exceeded more easily, so more overlapping boxes are suppressed."},
+      {q:"How does class-aware NMS compare boxes?",options:["It compares every class with every other class","It compares boxes within the same class","It ignores confidence scores","It keeps only the largest object"],answer:1,why:"Different classes do not suppress each other in class-aware NMS."},
+      {q:"Which grid cell is responsible for an object in YOLOv1?",options:["Every cell touched by the object's box","The cell containing the object's center","Only the top-left cell","The cell with the highest image brightness"],answer:1,why:"YOLOv1 assigns responsibility according to the cell containing the object center."},
+      {q:"Why can YOLOv1 handle a large object without a separate large-object detector?",options:["It uses large receptive fields and predicts the box size","It removes the grid for large objects","It always uses one pixel per object","It classifies only the object's center pixel"],answer:0,why:"Large receptive fields provide context, while the responsible cell predicts the object's width and height."},
+      {q:"When does YOLO coordinate loss apply according to the lecture?",options:["Only when an object exists and the box is responsible","Only when the image is empty","For every grid cell regardless of content","Only after NMS"],answer:0,why:"Coordinate loss applies to the responsible prediction when an object exists in that cell."}
+    ],
+    trueFalse: [
+      {q:"Object detection predicts both object categories and object locations.",answer:true,why:"Detection combines classification with localization."},
+      {q:"R-CNN used a region-proposal method that produced approximately 2,000 candidate regions per image.",answer:true,why:"The lecture describes Selective Search proposals at that scale."},
+      {q:"YOLO runs a separate classifier on every candidate crop during its normal one-pass prediction.",answer:false,why:"YOLO processes the whole image with one network forward pass."},
+      {q:"One YOLO forward pass means that YOLO can produce only one bounding box.",answer:false,why:"The single pass can predict many boxes across the grid."},
+      {q:"For YOLOv1, each predicted box contributes five values to the output tensor.",answer:true,why:"The five values are center position, width, height, and confidence."},
+      {q:"The illustrated confidence score multiplies objectness by IoU.",answer:true,why:"The lecture uses Pr(Object)×IoU for the confidence calculation."},
+      {q:"NMS keeps the lower-scoring box when its IoU with a higher-scoring box exceeds the threshold.",answer:false,why:"NMS suppresses the lower-scoring box when the overlap is too high."},
+      {q:"A lower NMS threshold generally produces more aggressive suppression.",answer:true,why:"The IoU exceeds a lower threshold more easily."},
+      {q:"Class-aware NMS allows boxes from different classes to suppress one another.",answer:false,why:"Class-aware NMS compares boxes only within the same class."},
+      {q:"YOLOv1 assigns an object to the grid cell containing its center.",answer:true,why:"The center determines the responsible cell even when the object spans multiple cells."}
+    ],
+    problemTypes: []
   }
 };
