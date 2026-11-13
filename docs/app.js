@@ -546,6 +546,7 @@
     if (lecture===4) return generateLN4(type,rng);
     if (lecture===5) return generateLN5(type,rng,options);
     if (lecture===6) return generateLN6(type,rng);
+    if (lecture===8) return generateLN8(type,rng);
     return generateLN7(type,rng);
   }
 
@@ -817,5 +818,108 @@
     const activation=1/(1+Math.exp(-z));
     const biasTerm=b>=0?` + ${b}`:` − ${Math.abs(b)}`;
     return {level:"Neuron calculation",title:"Weighted sum and sigmoid activation",question:`<p>For x=[${x.join(", ")}], w=[${w.join(", ")}], and b=${b}, calculate z=x dot w+b and sigmoid(z).</p>`,solution:`<p>z=${x.map((value,index)=>`(${value})(${w[index]})`).join(" + ")}${biasTerm} = <strong>${fmt(z)}</strong>.</p><p>sigmoid(z)=1/(1+e<sup>−z</sup>)=<strong>${fmt(activation)}</strong>.</p>`};
+  }
+
+  function generateLN8(type,rng) {
+    const sigmoid = z => 1 / (1 + Math.exp(-z));
+    const bce = (y,yhat) => -(y * Math.log(Math.max(1e-12,yhat)) + (1-y) * Math.log(Math.max(1e-12,1-yhat)));
+
+    if (type === "mlp-forward") {
+      const initial = {
+        x1:int(rng,0,1), x2:int(rng,0,1), y:0,
+        w11:int(rng,-12,12)/10, w21:int(rng,-12,12)/10,
+        w12:int(rng,-12,12)/10, w22:int(rng,-12,12)/10,
+        b1:int(rng,-8,8)/10, b2:int(rng,-8,8)/10,
+        v1:int(rng,-12,12)/10, v2:int(rng,-12,12)/10, bo:int(rng,-8,8)/10
+      };
+      initial.y = initial.x1 ^ initial.x2;
+      const render = v => {
+        const z1=v.x1*v.w11+v.x2*v.w21+v.b1;
+        const z2=v.x1*v.w12+v.x2*v.w22+v.b2;
+        const h1=sigmoid(z1), h2=sigmoid(z2);
+        const zo=h1*v.v1+h2*v.v2+v.bo, yhat=sigmoid(zo), predicted=yhat>=.5?1:0;
+        return {
+          question:`<p>For this 2–2–1 sigmoid MLP, calculate <strong>z₁, h₁, z₂, h₂, zᵒ, ŷ, the predicted class, and binary cross-entropy loss</strong>.</p><p>Input x=[${v.x1}, ${v.x2}], target y=${v.y}.</p><table class="results-table"><thead><tr><th>Parameter</th><th>Value</th><th>Meaning</th></tr></thead><tbody><tr><td>w₁₁, w₂₁</td><td>${v.w11}, ${v.w21}</td><td>x₁, x₂ → h₁</td></tr><tr><td>w₁₂, w₂₂</td><td>${v.w12}, ${v.w22}</td><td>x₁, x₂ → h₂</td></tr><tr><td>b₁, b₂</td><td>${v.b1}, ${v.b2}</td><td>hidden biases</td></tr><tr><td>v₁, v₂, bᵒ</td><td>${v.v1}, ${v.v2}, ${v.bo}</td><td>hidden → output and output bias</td></tr></tbody></table><p>Use σ(z)=1/(1+e<sup>−z</sup>), predict class 1 when ŷ≥0.5, and L=−[y ln(ŷ)+(1−y)ln(1−ŷ)].</p>`,
+          solution:`<ol><li>Hidden neuron 1: z₁=(${v.x1})(${v.w11})+(${v.x2})(${v.w21})+${v.b1}=<strong>${fmt(z1)}</strong>, so h₁=σ(z₁)=<strong>${fmt(h1)}</strong>.</li><li>Hidden neuron 2: z₂=(${v.x1})(${v.w12})+(${v.x2})(${v.w22})+${v.b2}=<strong>${fmt(z2)}</strong>, so h₂=σ(z₂)=<strong>${fmt(h2)}</strong>.</li><li>Output: zᵒ=(${fmt(h1)})(${v.v1})+(${fmt(h2)})(${v.v2})+${v.bo}=<strong>${fmt(zo)}</strong>; ŷ=σ(zᵒ)=<strong>${fmt(yhat)}</strong>.</li><li>Predicted class = <strong>${predicted}</strong>. BCE loss = −[${v.y} ln(${fmt(yhat)})+(1−${v.y})ln(1−${fmt(yhat)})] = <strong>${fmt(bce(v.y,yhat))}</strong>.</li></ol>`
+        };
+      };
+      return {level:"Forward pass",title:"2–2–1 MLP forward pass",question:render(initial).question,solution:render(initial).solution,editor:{kind:"bank",fields:[
+        {id:"x1",label:"Input x₁",value:initial.x1,step:1},{id:"x2",label:"Input x₂",value:initial.x2,step:1},{id:"y",label:"Target y",value:initial.y,step:1},
+        {id:"w11",label:"Weight w₁₁",value:initial.w11,step:.1},{id:"w21",label:"Weight w₂₁",value:initial.w21,step:.1},{id:"b1",label:"Hidden bias b₁",value:initial.b1,step:.1},
+        {id:"w12",label:"Weight w₁₂",value:initial.w12,step:.1},{id:"w22",label:"Weight w₂₂",value:initial.w22,step:.1},{id:"b2",label:"Hidden bias b₂",value:initial.b2,step:.1},
+        {id:"v1",label:"Output weight v₁",value:initial.v1,step:.1},{id:"v2",label:"Output weight v₂",value:initial.v2,step:.1},{id:"bo",label:"Output bias bᵒ",value:initial.bo,step:.1}
+      ],solve:render}};
+    }
+
+    if (type === "mlp-backprop") {
+      const initial = {
+        x1:int(rng,0,1), x2:0, y:int(rng,0,1), h1:(2+int(rng,0,6))/10, h2:(2+int(rng,0,6))/10, yhat:(2+int(rng,0,6))/10,
+        w11:int(rng,-10,10)/10, w21:int(rng,-10,10)/10, b1:int(rng,-8,8)/10,
+        w12:int(rng,-10,10)/10, w22:int(rng,-10,10)/10, b2:int(rng,-8,8)/10,
+        v1:int(rng,-10,10)/10, v2:int(rng,-10,10)/10, bo:int(rng,-8,8)/10, eta:pick(rng,[.1,.2,.5])
+      };
+      initial.x2 = 1 - initial.x1;
+      const render = v => {
+        const deltaO=v.yhat-v.y;
+        const delta1=deltaO*v.v1*v.h1*(1-v.h1), delta2=deltaO*v.v2*v.h2*(1-v.h2);
+        const gradients=[
+          ["v₁",v.v1,deltaO*v.h1], ["v₂",v.v2,deltaO*v.h2], ["bᵒ",v.bo,deltaO],
+          ["w₁₁",v.w11,delta1*v.x1], ["w₂₁",v.w21,delta1*v.x2], ["b₁",v.b1,delta1],
+          ["w₁₂",v.w12,delta2*v.x1], ["w₂₂",v.w22,delta2*v.x2], ["b₂",v.b2,delta2]
+        ];
+        const rows=gradients.map(([name,old,grad])=>`<tr><td>${name}</td><td>${fmt(old)}</td><td>${fmt(grad)}</td><td>${fmt(old-v.eta*grad)}</td></tr>`).join("");
+        return {
+          question:`<p>Use sigmoid hidden activations h₁=${v.h1}, h₂=${v.h2}, output ŷ=${v.yhat}, target y=${v.y}, and learning rate η=${v.eta}. Calculate the output error, both hidden errors, every parameter gradient, and one gradient-descent update.</p><p>Inputs are x₁=${v.x1}, x₂=${v.x2}. Output weights are v₁=${v.v1}, v₂=${v.v2}; hidden weights and biases are w₁₁=${v.w11}, w₂₁=${v.w21}, b₁=${v.b1}, w₁₂=${v.w12}, w₂₂=${v.w22}, b₂=${v.b2}; output bias bᵒ=${v.bo}.</p><p>Use δᵒ=ŷ−y, δ₁=δᵒv₁h₁(1−h₁), δ₂=δᵒv₂h₂(1−h₂), and θ′=θ−η∂L/∂θ.</p>`,
+          solution:`<p>Output error: δᵒ=${fmt(v.yhat)}−${v.y}=<strong>${fmt(deltaO)}</strong>.</p><p>Hidden errors: δ₁=(${fmt(deltaO)})(${v.v1})(${v.h1})(1−${v.h1})=<strong>${fmt(delta1)}</strong>; δ₂=(${fmt(deltaO)})(${v.v2})(${v.h2})(1−${v.h2})=<strong>${fmt(delta2)}</strong>.</p><table class="results-table"><thead><tr><th>Parameter θ</th><th>Old θ</th><th>Gradient ∂L/∂θ</th><th>Updated θ′</th></tr></thead><tbody>${rows}</tbody></table><p>For example, ∂L/∂v₁=δᵒh₁ and ∂L/∂w₁₁=δ₁x₁. A bias gradient equals the corresponding neuron error because the bias input is 1.</p>`
+        };
+      };
+      return {level:"Backpropagation",title:"Backpropagate through a 2–2–1 MLP",question:render(initial).question,solution:render(initial).solution,editor:{kind:"bank",fields:[
+        {id:"x1",label:"Input x₁",value:initial.x1,step:1},{id:"x2",label:"Input x₂",value:initial.x2,step:1},{id:"y",label:"Target y",value:initial.y,step:1},
+        {id:"h1",label:"Hidden activation h₁",value:initial.h1,step:.1},{id:"h2",label:"Hidden activation h₂",value:initial.h2,step:.1},{id:"yhat",label:"Output ŷ",value:initial.yhat,step:.1},
+        {id:"v1",label:"Output weight v₁",value:initial.v1,step:.1},{id:"v2",label:"Output weight v₂",value:initial.v2,step:.1},{id:"bo",label:"Output bias bᵒ",value:initial.bo,step:.1},
+        {id:"w11",label:"Weight w₁₁",value:initial.w11,step:.1},{id:"w21",label:"Weight w₂₁",value:initial.w21,step:.1},{id:"b1",label:"Hidden bias b₁",value:initial.b1,step:.1},
+        {id:"w12",label:"Weight w₁₂",value:initial.w12,step:.1},{id:"w22",label:"Weight w₂₂",value:initial.w22,step:.1},{id:"b2",label:"Hidden bias b₂",value:initial.b2,step:.1},{id:"eta",label:"Learning rate η",value:initial.eta,step:.1}
+      ],solve:render}};
+    }
+
+    if (type === "mlp-parameters") {
+      const initial={input:int(rng,2,6),hidden1:int(rng,2,6),hidden2:int(rng,0,4),output:int(rng,1,3)};
+      const render=v=>{
+        const layers=v.hidden2>0?[v.input,v.hidden1,v.hidden2,v.output]:[v.input,v.hidden1,v.output];
+        let total=0; const rows=layers.slice(0,-1).map((from,i)=>{const to=layers[i+1],weights=from*to,biases=to,subtotal=weights+biases;total+=subtotal;return `<tr><td>${i+1}</td><td>${from}</td><td>${to}</td><td>${weights}</td><td>${biases}</td><td>${subtotal}</td></tr>`;}).join("");
+        return {question:`<p>Count the trainable parameters in the dense MLP architecture <strong>${layers.join(" → ")}</strong>. Include one bias for every neuron in a layer.</p><p>Use parameters per layer = (number of inputs × number of neurons) + number of neurons.</p>`,solution:`<table class="results-table"><thead><tr><th>Layer</th><th>Inputs</th><th>Neurons</th><th>Weights</th><th>Biases</th><th>Subtotal</th></tr></thead><tbody>${rows}</tbody></table><p><strong>Total trainable parameters = ${total}</strong>.</p>`};
+      };
+      return {level:"Parameter counting",title:"Count parameters in an MLP",question:render(initial).question,solution:render(initial).solution,editor:{kind:"bank",fields:[{id:"input",label:"Input neurons",value:initial.input,step:1},{id:"hidden1",label:"Hidden layer 1 neurons",value:initial.hidden1,step:1},{id:"hidden2",label:"Hidden layer 2 neurons (0 removes it)",value:initial.hidden2,step:1},{id:"output",label:"Output neurons",value:initial.output,step:1}],solve:render}};
+    }
+
+    if (type === "mlp-xor") {
+      const initial={k:pick(rng,[6,8,10]),vOr:10,vAnd:-20,bo:-5};
+      const render=v=>{
+        const rows=[[0,0],[0,1],[1,0],[1,1]].map(([x1,x2])=>{
+          const sum=x1+x2, zOr=v.k*(sum-.5), zAnd=v.k*(sum-1.5), hOr=sigmoid(zOr), hAnd=sigmoid(zAnd), zo=v.vOr*hOr+v.vAnd*hAnd+v.bo, yhat=sigmoid(zo), target=x1^x2;
+          return {x1,x2,zOr,zAnd,hOr,hAnd,zo,yhat,target,pred:yhat>=.5?1:0,loss:bce(target,yhat)};
+        });
+        const table=rows.map(r=>`<tr><td>(${r.x1},${r.x2})</td><td>${fmt(r.zOr)}</td><td>${fmt(r.hOr)}</td><td>${fmt(r.zAnd)}</td><td>${fmt(r.hAnd)}</td><td>${fmt(r.zo)}</td><td>${fmt(r.yhat)}</td><td>${r.pred}</td><td>${r.target}</td></tr>`).join("");
+        const andTerm=v.vAnd<0?` − ${Math.abs(v.vAnd)}`:` + ${v.vAnd}`;
+        const biasTerm=v.bo<0?` − ${Math.abs(v.bo)}`:` + ${v.bo}`;
+        return {question:`<p>This 2–2–1 sigmoid MLP uses one hidden neuron that behaves like OR and one that behaves like AND:</p><p>z<sub>OR</sub>=k(x₁+x₂−0.5), z<sub>AND</sub>=k(x₁+x₂−1.5), h=σ(z), and zᵒ=${v.vOr}h<sub>OR</sub>${andTerm}h<sub>AND</sub>${biasTerm}.</p><p>With k=${v.k}, calculate all four outputs, classify with threshold 0.5, and compare with XOR targets.</p>`,solution:`<table class="results-table"><thead><tr><th>Input</th><th>z<sub>OR</sub></th><th>h<sub>OR</sub></th><th>z<sub>AND</sub></th><th>h<sub>AND</sub></th><th>zᵒ</th><th>ŷ</th><th>Pred.</th><th>XOR target</th></tr></thead><tbody>${table}</tbody></table><p>The network predicts <strong>${rows.filter(r=>r.pred===r.target).length}/4</strong> XOR cases correctly for this variant. The hidden layer makes the non-linearly separable XOR pattern representable.</p>`};
+      };
+      return {level:"XOR representation",title:"Use a hidden layer to represent XOR",question:render(initial).question,solution:render(initial).solution,editor:{kind:"bank",fields:[{id:"k",label:"Hidden scale k",value:initial.k,step:1},{id:"vOr",label:"OR output weight",value:initial.vOr,step:1},{id:"vAnd",label:"AND output weight",value:initial.vAnd,step:1},{id:"bo",label:"Output bias",value:initial.bo,step:1}],solve:render}};
+    }
+
+    const initial={w1:int(rng,-10,10)/10,w2:int(rng,-10,10)/10,b:int(rng,-10,10)/10,eta:pick(rng,[.1,.2,.5]),g1w1:int(rng,-8,8)/10,g1w2:int(rng,-8,8)/10,g1b:int(rng,-8,8)/10,g2w1:int(rng,-8,8)/10,g2w2:int(rng,-8,8)/10,g2b:int(rng,-8,8)/10,g3w1:int(rng,-8,8)/10,g3w2:int(rng,-8,8)/10,g3b:int(rng,-8,8)/10};
+    const render=v=>{
+      const gradients=[[v.g1w1,v.g1w2,v.g1b],[v.g2w1,v.g2w2,v.g2b],[v.g3w1,v.g3w2,v.g3b]];
+      const mean=gradients[0].map((_,i)=>gradients.reduce((sum,row)=>sum+row[i],0)/gradients.length);
+      const updated=[v.w1- v.eta*mean[0],v.w2- v.eta*mean[1],v.b- v.eta*mean[2]];
+      const rows=gradients.map((g,i)=>`<tr><td>${i+1}</td><td>${fmt(g[0])}</td><td>${fmt(g[1])}</td><td>${fmt(g[2])}</td></tr>`).join("");
+      return {question:`<p>Three training examples produce gradients for parameters w₁, w₂, and b. Using full-batch gradient descent, calculate the mean gradient and update all three parameters.</p><p>Current θ=[w₁,w₂,b]=[${v.w1}, ${v.w2}, ${v.b}], learning rate η=${v.eta}, and θ′=θ−ηḡ.</p><table class="results-table"><thead><tr><th>Example</th><th>∂L/∂w₁</th><th>∂L/∂w₂</th><th>∂L/∂b</th></tr></thead><tbody>${rows}</tbody></table>`,solution:`<p>Mean gradient ḡ=[(${v.g1w1}+${v.g2w1}+${v.g3w1})/3, (${v.g1w2}+${v.g2w2}+${v.g3w2})/3, (${v.g1b}+${v.g2b}+${v.g3b})/3] = <strong>[${mean.map(fmt).join(", ")}]</strong>.</p><p>θ′=[${v.w1}, ${v.w2}, ${v.b}]−${v.eta}[${mean.map(fmt).join(", ")}] = <strong>[${updated.map(fmt).join(", ")}]</strong>.</p><p>Full-batch training averages the example gradients before taking one shared update.</p>`};
+    };
+    return {level:"Gradient descent",title:"Average a full-batch gradient",question:render(initial).question,solution:render(initial).solution,editor:{kind:"bank",fields:[
+      {id:"w1",label:"Current w₁",value:initial.w1,step:.1},{id:"w2",label:"Current w₂",value:initial.w2,step:.1},{id:"b",label:"Current bias b",value:initial.b,step:.1},{id:"eta",label:"Learning rate η",value:initial.eta,step:.1},
+      {id:"g1w1",label:"Example 1 gradient w₁",value:initial.g1w1,step:.1},{id:"g1w2",label:"Example 1 gradient w₂",value:initial.g1w2,step:.1},{id:"g1b",label:"Example 1 gradient b",value:initial.g1b,step:.1},
+      {id:"g2w1",label:"Example 2 gradient w₁",value:initial.g2w1,step:.1},{id:"g2w2",label:"Example 2 gradient w₂",value:initial.g2w2,step:.1},{id:"g2b",label:"Example 2 gradient b",value:initial.g2b,step:.1},
+      {id:"g3w1",label:"Example 3 gradient w₁",value:initial.g3w1,step:.1},{id:"g3w2",label:"Example 3 gradient w₂",value:initial.g3w2,step:.1},{id:"g3b",label:"Example 3 gradient b",value:initial.g3b,step:.1}
+    ],solve:render}};
   }
 })();

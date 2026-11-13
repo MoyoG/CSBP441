@@ -535,7 +535,7 @@ window.COURSE_DATA = {
       {q:"If a hidden neuron has an outgoing weight of zero, its backpropagated error is zero.",answer:true,why:"The hidden error includes multiplication by the outgoing weight."},
       {q:"For sigmoid output with binary cross-entropy, the output error is δᵒ=(ŷ−y)ŷ(1−ŷ).",answer:false,why:"The sigmoid derivative cancels with the BCE derivative, leaving δᵒ=ŷ−y."}
     ],
-    problemTypes: []
+    problemTypes: [["mlp-forward","Forward pass through a 2–2–1 MLP"],["mlp-backprop","Backpropagation and parameter update"],["mlp-parameters","Count MLP trainable parameters"],["mlp-xor","Represent XOR with a hidden layer"],["mlp-batch","Full-batch gradient-descent update"]]
   },
   9: {
     short: "CNNs",
