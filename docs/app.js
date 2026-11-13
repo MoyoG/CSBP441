@@ -257,6 +257,20 @@
           "<section><h3>Deep layer · parts and object evidence</h3><div class='cnn-feature-canvas-grid' id='cnn-feature-deep'></div></section>" +
         "</div>" +
         "<p class='cnn-feature-note'>Each canvas is a selected channel from the model’s actual activation tensor. Channels are selected by mean absolute activation so the panel stays compact.</p>" +
+      "<div class='cnn-feature-reference' id='cnn-feature-reference' hidden>" +
+        "<p class='eyebrow'>Reference-style feature visualization</p>" +
+        "<h3>Top-activating image patches</h3>" +
+        "<p class='cnn-feature-note'>These are real images from the course Imagenette subset, ranked by actual MobileNetV1 responses at each sampled layer. The Zeiler–Fergus paper projected strong activations back to pixels; this browser view shows the original image patches that produced the strongest responses.</p>" +
+        "<div class='cnn-feature-controls'>" +
+          "<button class='button button-secondary' id='build-feature-gallery' type='button' disabled>Build feature gallery</button>" +
+          "<span class='cnn-feature-gallery-status' id='cnn-feature-gallery-status' aria-live='polite'>Run the CNN first to enable this gallery.</span>" +
+        "</div>" +
+        "<div class='cnn-feature-gallery-grid' id='cnn-feature-gallery-grid' hidden>" +
+          "<section><h4>Low-level responses</h4><p>Edges, colors, and local contrast</p><div class='cnn-feature-patch-grid' id='cnn-feature-gallery-early'></div></section>" +
+          "<section><h4>Mid-level responses</h4><p>Textures, curves, and repeated patterns</p><div class='cnn-feature-patch-grid' id='cnn-feature-gallery-middle'></div></section>" +
+          "<section><h4>High-level responses</h4><p>Parts and object evidence</p><div class='cnn-feature-patch-grid' id='cnn-feature-gallery-deep'></div></section>" +
+        "</div>" +
+      "</div>" +
       "</div>";
 
     const button = host.querySelector("#load-cnn-features");
@@ -267,10 +281,34 @@
     const imageCaption = host.querySelector("#cnn-feature-input-caption");
     const live = host.querySelector("#cnn-feature-live");
     const prediction = host.querySelector("#cnn-feature-prediction");
+    const gallery = host.querySelector("#cnn-feature-reference");
+    const galleryButton = host.querySelector("#build-feature-gallery");
+    const galleryStatus = host.querySelector("#cnn-feature-gallery-status");
+    const galleryGrid = host.querySelector("#cnn-feature-gallery-grid");
     let loading = false;
+    let galleryLoading = false;
     let modelCache = null;
+    let activeGraph = null;
+    let activeStageNodes = {};
     let objectUrl = "";
     const courseImage = "assets/imagenette-gas-pump.png";
+    const stages = [
+      {key: "early", label: "early", title: "Low-level", patchSize: 76, patterns: [["conv2d_0", "relu6"], ["conv2d_0"]]},
+      {key: "middle", label: "middle", title: "Mid-level", patchSize: 132, patterns: [["conv2d_5_pointwise", "relu6"], ["conv2d_5_pointwise"], ["conv2d_6_pointwise", "relu6"], ["conv2d_6_pointwise"]]},
+      {key: "deep", label: "deep", title: "High-level", patchSize: 196, patterns: [["conv2d_13_pointwise", "relu6"], ["conv2d_13_pointwise"], ["conv2d_13", "relu6"], ["conv2d_13"]]}
+    ];
+    const gallerySamples = [
+      {label: "chain saw", col: 0, row: 0},
+      {label: "gas pump", col: 1, row: 0},
+      {label: "cassette player", col: 2, row: 0},
+      {label: "tench", col: 3, row: 0},
+      {label: "gas pump", col: 4, row: 0},
+      {label: "English springer", col: 0, row: 1},
+      {label: "English springer", col: 1, row: 1},
+      {label: "tench", col: 2, row: 1},
+      {label: "golf ball", col: 3, row: 1},
+      {label: "parachute", col: 4, row: 1}
+    ];
 
     function graphNodeNames(graph) {
       const store = graph && graph.executor && graph.executor.graph && graph.executor.graph.nodes;
@@ -323,9 +361,17 @@
     function clearLiveOutput() {
       live.hidden = true;
       prediction.textContent = "";
+      gallery.hidden = true;
+      galleryGrid.hidden = true;
+      galleryButton.disabled = true;
+      galleryStatus.textContent = "Run the CNN first to enable this gallery.";
+      activeGraph = null;
+      activeStageNodes = {};
       ["early", "middle", "deep"].forEach(key => {
         const target = host.querySelector("#cnn-feature-" + key);
         if (target) target.replaceChildren();
+        const galleryTarget = host.querySelector("#cnn-feature-gallery-" + key);
+        if (galleryTarget) galleryTarget.replaceChildren();
       });
     }
 
@@ -443,6 +489,134 @@
       return resized.toFloat().div(127.5).sub(1).expandDims(0);
     }
 
+    function loadImageAsset(src) {
+      return new Promise((resolve, reject) => {
+        const asset = new Image();
+        asset.onload = () => resolve(asset);
+        asset.onerror = () => reject(new Error("could not load " + src));
+        asset.src = src;
+      });
+    }
+
+    function makeGallerySample(montage, sample) {
+      const canvas = document.createElement("canvas");
+      canvas.width = 224;
+      canvas.height = 224;
+      const context = canvas.getContext("2d");
+      const sourceX = 10 + sample.col * 257;
+      const sourceY = 62 + sample.row * 267;
+      context.drawImage(montage, sourceX, sourceY, 243, 243, 0, 0, 224, 224);
+      return canvas;
+    }
+
+    async function summarizeActivation(tensor) {
+      const shape = tensor && tensor.shape ? tensor.shape : [];
+      if (shape.length < 3) return null;
+      const rank = shape.length;
+      const isNchw = rank === 4
+        ? shape[0] === 1 && shape[2] === shape[3] && shape[1] !== shape[2]
+        : rank === 3 && shape[1] === shape[2] && shape[0] !== shape[1];
+      const height = isNchw ? shape[rank - 2] : shape[rank - 3];
+      const width = isNchw ? shape[rank - 1] : shape[rank - 2];
+      const channels = isNchw ? shape[rank - 3] : shape[rank - 1];
+      if (!height || !width || !channels) return null;
+      const values = await tensor.data();
+      const readValue = (y, x, channel) => isNchw
+        ? Number(values[(channel * height + y) * width + x]) || 0
+        : Number(values[(y * width + x) * channels + channel]) || 0;
+      let best = {score: -Infinity, channel: 0, x: 0, y: 0};
+      for (let channel = 0; channel < channels; channel += 1) {
+        let peak = -Infinity;
+        let peakX = 0;
+        let peakY = 0;
+        let sum = 0;
+        for (let y = 0; y < height; y += 1) {
+          for (let x = 0; x < width; x += 1) {
+            const value = Math.abs(readValue(y, x, channel));
+            sum += value;
+            if (value > peak) {
+              peak = value;
+              peakX = x;
+              peakY = y;
+            }
+          }
+        }
+        const mean = sum / (height * width);
+        if (mean > best.score) best = {score: mean, channel, x: peakX, y: peakY};
+      }
+      return { ...best, height, width, channels, isNchw };
+    }
+
+    function renderGalleryStage(stage, records) {
+      const target = host.querySelector("#cnn-feature-gallery-" + stage.key);
+      if (!target) return;
+      target.replaceChildren();
+      records.slice(0, 4).forEach((record, index) => {
+        const figure = document.createElement("figure");
+        figure.className = "cnn-feature-patch-card";
+        const canvas = document.createElement("canvas");
+        canvas.className = "cnn-feature-patch";
+        canvas.width = 224;
+        canvas.height = 224;
+        canvas.setAttribute("aria-label", stage.title + " top-activating patch from " + record.label);
+        const context = canvas.getContext("2d");
+        const centerX = (record.x + 0.5) * 224 / record.width;
+        const centerY = (record.y + 0.5) * 224 / record.height;
+        const size = Math.min(stage.patchSize, 224);
+        const sourceX = Math.max(0, Math.min(224 - size, centerX - size / 2));
+        const sourceY = Math.max(0, Math.min(224 - size, centerY - size / 2));
+        context.drawImage(record.canvas, sourceX, sourceY, size, size, 0, 0, 224, 224);
+        const caption = document.createElement("figcaption");
+        caption.textContent = "#" + (index + 1) + " " + record.label + " · channel " + record.channel + " · mean |activation| " + record.score.toFixed(2);
+        figure.append(canvas, caption);
+        target.append(figure);
+      });
+    }
+
+    async function buildFeatureGallery() {
+      if (galleryLoading || !activeGraph || !Object.keys(activeStageNodes).length) return;
+      galleryLoading = true;
+      galleryButton.disabled = true;
+      galleryGrid.hidden = true;
+      try {
+        galleryStatus.textContent = "Loading the real Imagenette sample gallery…";
+        const montage = await loadImageAsset("assets/imagenette-samples.png");
+        const samples = gallerySamples.map(sample => ({...sample, canvas: makeGallerySample(montage, sample)}));
+        for (const stage of stages) {
+          const nodeName = activeStageNodes[stage.key];
+          if (!nodeName) continue;
+          const records = [];
+          for (let index = 0; index < samples.length; index += 1) {
+            galleryStatus.textContent = "Ranking " + stage.label + " examples (" + (index + 1) + "/" + samples.length + ")…";
+            let input = null;
+            let output = null;
+            try {
+              input = makeInputTensor(samples[index].canvas);
+              output = activeGraph.execute(input, nodeName);
+              const tensor = Array.isArray(output) ? output[0] : output;
+              const summary = await summarizeActivation(tensor);
+              if (summary) records.push({...samples[index], ...summary});
+            } finally {
+              disposeOutput(output);
+              if (input) input.dispose();
+            }
+          }
+          records.sort((a, b) => b.score - a.score);
+          renderGalleryStage(stage, records);
+        }
+        galleryGrid.hidden = false;
+        galleryStatus.textContent = "Top examples ranked from 10 real Imagenette images using the model’s intermediate activations.";
+      } catch (error) {
+        const detail = error && error.message ? String(error.message).replace(/\s+/g, " ").slice(0, 140) : "unknown browser error";
+        galleryStatus.textContent = "The feature gallery stopped: " + detail + ".";
+      } finally {
+        galleryLoading = false;
+        galleryButton.disabled = !activeGraph;
+      }
+    }
+
+    galleryButton.addEventListener("click", buildFeatureGallery);
+
     button.addEventListener("click", async () => {
       if (loading) return;
       loading = true;
@@ -477,12 +651,9 @@
         }
         live.hidden = false;
         const graph = model.model || model;
+        activeGraph = graph;
+        activeStageNodes = {};
         const names = graphNodeNames(graph);
-        const stages = [
-          {key: "early", label: "early", patterns: [["conv2d_0", "relu6"], ["conv2d_0"]]},
-          {key: "middle", label: "middle", patterns: [["conv2d_5_pointwise", "relu6"], ["conv2d_5_pointwise"], ["conv2d_6_pointwise", "relu6"], ["conv2d_6_pointwise"]]},
-          {key: "deep", label: "deep", patterns: [["conv2d_13_pointwise", "relu6"], ["conv2d_13_pointwise"], ["conv2d_13", "relu6"], ["conv2d_13"]]}
-        ];
         let input = null;
         let rendered = 0;
         try {
@@ -493,6 +664,7 @@
             const nodeName = await findActivationNode(graph, input, names, stage.patterns);
             const target = host.querySelector("#cnn-feature-" + stage.key);
             if (!nodeName || !target) continue;
+            activeStageNodes[stage.key] = nodeName;
             const output = graph.execute(input, nodeName);
             const tensor = Array.isArray(output) ? output[0] : output;
             if (tensor) rendered += await renderFeatureMaps(tensor, target, stage.label);
@@ -502,11 +674,18 @@
           if (input) input.dispose();
         }
         if (rendered) {
-          status.textContent = "Loaded MobileNetV1. The live panels show actual intermediate activation tensors; the course conv1 maps remain above for comparison.";
+          gallery.hidden = false;
+          galleryButton.disabled = false;
+          galleryStatus.textContent = "Click Build feature gallery to rank real Imagenette examples by layer response.";
+          status.textContent = "Loaded MobileNetV1. The live panels show actual intermediate activation tensors; build the reference-style gallery below to compare real top-activating image patches.";
         } else {
+          activeGraph = null;
+          activeStageNodes = {};
           status.textContent = "MobileNet loaded and classified the image, but its internal layer names were unavailable in this browser. The real course conv1 maps remain visible above.";
         }
       } catch (error) {
+        activeGraph = null;
+        activeStageNodes = {};
         live.hidden = false;
         const detail = error && error.message ? String(error.message).replace(/\s+/g, " ").slice(0, 180) : "unknown browser error";
         status.textContent = "The CNN stopped while " + phase + ": " + detail + ". The real course activation maps remain available above.";
