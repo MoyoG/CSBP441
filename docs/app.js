@@ -113,6 +113,38 @@
             const outputs=rows.map(row=>[`Box ${row.box}`,row.confidence.toFixed(3),row.scores[0].toFixed(3),row.scores[1].toFixed(3),row.scores[2].toFixed(3),row.best]);
             return {question:`Calculate the object confidence and the class-specific score for each class for four YOLO candidate boxes. The IoU values have already been computed from the box coordinates.`, questionHTML:`<p>Use <strong>C<sub>j</sub> = Pr(Object) × IoU</strong>, then use <strong>S<sub>j,c</sub> = C<sub>j</sub> × Pr(c|Object)</strong>. The class probabilities are conditional on an object being present.</p>${yoloTable(["Box","Pr(Object)","IoU","Pr(Car|Object)","Pr(Person|Object)","Pr(Bicycle|Object)"],inputs,"yolo-class-score-input-table")}<p>Calculate all three class-specific scores for every box, select the best class per box, and identify the strongest detection overall. Do not apply NMS in this question.</p>`, solution:`Use C<sub>j</sub> = Pr(Object) × IoU, followed by S<sub>j,c</sub> = C<sub>j</sub> × Pr(c|Object).`, solutionHTML:`${yoloTable(["Box","C<sub>j</sub>","Car score","Person score","Bicycle score","Best class"],outputs,"yolo-class-score-output-table")}<p>The strongest class-specific detection is <strong>Box ${strongest.box}, ${strongest.className}</strong> with score <strong>${strongest.score.toFixed(3)}</strong>.</p><p>Object confidence uses objectness and IoU. The class-specific score multiplies that confidence by the conditional class probability.</p>`};
           }
+          case 6: {
+            const variants=[
+              {label:"car/person overlap",scores:[0.95,0.88,0.84,0.78,0.72],labels:["Car","Person","Car","Person","Bicycle"],iou:[[1,.70,.65,.20,.10],[.70,1,.55,.60,.15],[.65,.55,1,.50,.45],[.20,.60,.50,1,.65],[.10,.15,.45,.65,1]]},
+              {label:"two same-class pairs",scores:[0.92,0.86,0.80,0.74,0.68],labels:["Car","Car","Person","Person","Bicycle"],iou:[[1,.62,.55,.10,.08],[.62,1,.25,.20,.05],[.55,.25,1,.58,.40],[.10,.20,.58,1,.60],[.08,.05,.40,.60,1]]},
+              {label:"mixed class competition",scores:[0.94,0.89,0.82,0.77,0.70],labels:["Bicycle","Person","Bicycle","Car","Person"],iou:[[1,.60,.46,.12,.18],[.60,1,.20,.15,.66],[.46,.20,1,.55,.30],[.12,.15,.55,1,.64],[.18,.66,.30,.64,1]]},
+              {label:"overlap chain",scores:[0.93,0.85,0.79,0.73,0.67],labels:["Person","Bicycle","Person","Car","Car"],iou:[[1,.30,.57,.22,.10],[.30,1,.18,.52,.60],[.57,.18,1,.33,.26],[.22,.52,.33,1,.63],[.10,.60,.26,.63,1]]}
+            ];
+            const profile=variants[s], names=["A","B","C","D","E"], thresholds=[0.30,0.50,0.70], scores=profile.scores, labels=profile.labels, iou=profile.iou;
+            const applyNms=(threshold,classSpecific)=>{
+              let remaining=scores.map((_,index)=>index).sort((a,b)=>scores[b]-scores[a]);
+              const kept=[], suppressed=[];
+              while(remaining.length){
+                const current=remaining.shift(); kept.push(current);
+                const next=[];
+                remaining.forEach(candidate=>{
+                  const overlap=iou[current][candidate], sameClass=labels[current]===labels[candidate];
+                  if(overlap>threshold && (!classSpecific || sameClass)) suppressed.push({box:candidate,by:current,overlap});
+                  else next.push(candidate);
+                });
+                remaining=next;
+              }
+              return {kept,suppressed};
+            };
+            const keptText=result=>result.kept.map(box=>`${names[box]} (${labels[box]})`).join(", ");
+            const suppressedText=result=>result.suppressed.length?result.suppressed.map(item=>`${names[item.box]} by ${names[item.by]} (${labels[item.by]}→${labels[item.box]}, IoU ${item.overlap.toFixed(2)})`).join("; "):"None";
+            const inputRows=names.map((name,row)=>[name,labels[row],scores[row].toFixed(2),...names.map((_,column)=>row===column?"—":iou[row][column].toFixed(2))]);
+            const solutionRows=thresholds.map((threshold,index)=>{
+              const classSpecific=applyNms(threshold,true), classAgnostic=applyNms(threshold,false);
+              return [["Aggressive","Moderate","Permissive"][index],threshold.toFixed(2),keptText(classSpecific),suppressedText(classSpecific),keptText(classAgnostic),suppressedText(classAgnostic)];
+            });
+            return {question:`Apply class-specific NMS to five candidate boxes and compare it with class-agnostic NMS at three IoU thresholds.`, questionHTML:`<p><strong>Scenario: ${esc(profile.label)}</strong>. Sort boxes from highest to lowest score. For <strong>class-specific NMS</strong>, suppress a lower-scoring box only when its IoU with a kept box is greater than the threshold <em>and</em> both boxes have the same class. Then compare with class-agnostic NMS, which ignores class labels.</p>${yoloTable(["Box","Class","Score","IoU with A","IoU with B","IoU with C","IoU with D","IoU with E"],inputRows,"yolo-class-nms-input-table")}${yoloTable(["Scenario","NMS threshold","Class-specific kept","Class-specific suppressed","Class-agnostic kept","Class-agnostic suppressed"],solutionRows.map(row=>[row[0],row[1],"?","?","?","?"]),"yolo-class-nms-table")}<p>Complete all four decision columns. Explain why highly overlapping boxes from different classes can remain under class-specific NMS.</p>`, solution:`Process A, B, C, D, and E in descending score order. Class-specific NMS compares IoU only within the same class; class-agnostic NMS compares every class. Therefore a high-overlap Car and Person can both survive class-specific NMS.`, solutionHTML:`${yoloTable(["Scenario","NMS threshold","Class-specific kept","Class-specific suppressed","Class-agnostic kept","Class-agnostic suppressed"],solutionRows,"yolo-class-nms-solution-table")}<p>Class-specific NMS suppresses only same-class duplicates. Class-agnostic NMS also suppresses a lower-scoring box when the overlapping box has a different class, so it can remove a valid neighboring object when the classes are different.</p>`};
+          }
           case 0: {
             const grid=[3,5,7,9][s], boxesPerCell=2, classes=20, cells=grid*grid, totalBoxes=cells*boxesPerCell, valuesPerCell=boxesPerCell*5+classes, output=cells*valuesPerCell;
             return {question:`For a YOLOv1 output with an S×S grid, B boxes per cell, and C classes, calculate the grid cells, total predicted boxes, predictions per cell, and total output values.`, questionHTML:`<p>Use the YOLOv1 configuration below.</p>${yoloTable(["Input","Value","Meaning"],[["Grid size",`${grid} × ${grid}`,"S × S cells"],["Boxes per cell",boxesPerCell,"B"],["Classes",classes,"C"],["Values per box",5,"x, y, w, h, confidence"]],"yolo-input-table")}<div class="formula-block"><strong>Output formula</strong><br>S × S × (B × 5 + C)</div><ol class="corner-task-list"><li>Count the grid cells.</li><li>Count all predicted boxes.</li><li>Calculate the output size.</li></ol>`, solution:`There are ${cells} grid cells. Total predicted boxes = ${cells}×${boxesPerCell}=${totalBoxes}. Each cell predicts ${boxesPerCell}×5+${classes}=${valuesPerCell} values. Total output size = ${grid}×${grid}×${valuesPerCell}=${output}.`, solutionHTML:`${yoloTable(["Quantity","Calculation","Result"],[["Grid cells",`${grid} × ${grid}`,cells],["Predicted boxes",`${cells} × ${boxesPerCell}`,totalBoxes],["Values per cell",`${boxesPerCell} × 5 + ${classes}`,valuesPerCell],["Total output",`${grid} × ${grid} × ${valuesPerCell}`,output]],"yolo-output-table")}<p>For the original YOLOv1 setting S=7, this becomes 7×7×(2×5+20)=1470 values.</p>`};

@@ -742,7 +742,8 @@ window.COURSE_DATA = {
       ["NMS threshold decisions", "", ""],
       ["Responsible grid cell", "", ""],
       ["YOLO loss terms", "", ""],
-      ["Class-specific scores for four YOLO boxes", "", ""]
+      ["Class-specific scores for four YOLO boxes", "", ""],
+      ["Class-specific NMS with five boxes", "", ""]
     ],
     mcqs: [
       {q:"What additional output does object detection provide beyond image classification?",options:["Only a brighter image","The location of each detected object","Only the image width","A camera calibration matrix"],answer:1,why:"Detection predicts both object categories and their locations, commonly with bounding boxes."},
