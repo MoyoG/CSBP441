@@ -129,22 +129,24 @@
         "<div><span>4</span><strong>Objects</strong><small>Evidence used by the final classifier</small></div>" +
       "</div>" +
       "<div class='cnn-feature-controls'>" +
-        "<button class='button button-primary' id='load-cnn-features' type='button'>Load pretrained ImageNet CNN</button>" +
-        "<span class='cnn-feature-status' id='cnn-feature-status' aria-live='polite'>The real course activation maps are ready below.</span>" +
+        "<label class='cnn-feature-upload'>Choose an image<input id='cnn-feature-file' type='file' accept='image/*'></label>" +
+        "<button class='button button-secondary' id='use-course-image' type='button'>Use course image</button>" +
+        "<button class='button button-primary' id='load-cnn-features' type='button'>Run pretrained CNN on image</button>" +
+        "<span class='cnn-feature-status' id='cnn-feature-status' aria-live='polite'>The course image and activation maps are ready below.</span>" +
       "</div>" +
       "<div class='cnn-feature-source'>" +
         "<figure class='cnn-feature-input'>" +
-          "<p class='eyebrow'>Real input</p>" +
+          "<p class='eyebrow'>Model input · local only</p>" +
           "<img id='cnn-feature-input-image' src='assets/imagenette-gas-pump.png' alt='Gas pump image from the Imagenette dataset'>" +
-          "<figcaption>Gas pump image from the course Imagenette lab.</figcaption>" +
+          "<figcaption id='cnn-feature-input-caption'>Gas pump image from the course Imagenette lab.</figcaption>" +
         "</figure>" +
         "<figure class='cnn-feature-static'>" +
           "<p class='eyebrow'>Real course CNN: first layer</p>" +
           "<img src='assets/imagenette-conv1-feature-maps.png' alt='Sixteen first-layer convolution activation maps for a gas pump image'>" +
-          "<figcaption>Stored <code>conv1</code> activations from the course CNN trained on Imagenette. These maps are real numerical outputs from the lab notebook, not a decorative illustration.</figcaption>" +
+          "<figcaption>Stored <code>conv1</code> activations from the course CNN trained on Imagenette. This fixed panel is a real numerical reference for the course gas-pump image.</figcaption>" +
         "</figure>" +
       "</div>" +
-      "<p class='cnn-feature-note'>The live panels below are optional. When loaded, they show raw intermediate activations from MobileNetV1 pretrained on ImageNet. “Edges → textures → parts → objects” is a useful teaching interpretation; individual channels and models do not all have the same semantics.</p>" +
+      "<p class='cnn-feature-note'>Choose any local image to update the live panels. The image stays in this browser; it is not sent to GitHub or a server. When loaded, the panels show raw intermediate activations from MobileNetV1 pretrained on ImageNet. “Edges → textures → parts → objects” is a useful teaching interpretation; individual channels and models do not all have the same semantics.</p>" +
       "<div class='cnn-feature-live' id='cnn-feature-live' hidden>" +
         "<p class='eyebrow'>Live pretrained CNN activations</p>" +
         "<p id='cnn-feature-prediction' class='cnn-feature-prediction' aria-live='polite'></p>" +
@@ -157,11 +159,17 @@
       "</div>";
 
     const button = host.querySelector("#load-cnn-features");
+    const fileInput = host.querySelector("#cnn-feature-file");
+    const courseImageButton = host.querySelector("#use-course-image");
     const status = host.querySelector("#cnn-feature-status");
     const image = host.querySelector("#cnn-feature-input-image");
+    const imageCaption = host.querySelector("#cnn-feature-input-caption");
     const live = host.querySelector("#cnn-feature-live");
     const prediction = host.querySelector("#cnn-feature-prediction");
     let loading = false;
+    let modelCache = null;
+    let objectUrl = "";
+    const courseImage = "assets/imagenette-gas-pump.png";
 
     function graphNodeNames(graph) {
       const store = graph && graph.executor && graph.executor.graph && graph.executor.graph.nodes;
@@ -183,6 +191,49 @@
         output.dispose();
       }
     }
+
+    function clearLiveOutput() {
+      live.hidden = true;
+      prediction.textContent = "";
+      ["early", "middle", "deep"].forEach(key => {
+        const target = host.querySelector("#cnn-feature-" + key);
+        if (target) target.replaceChildren();
+      });
+    }
+
+    function releaseObjectUrl() {
+      if (objectUrl) {
+        window.URL.revokeObjectURL(objectUrl);
+        objectUrl = "";
+      }
+    }
+
+    courseImageButton.addEventListener("click", () => {
+      releaseObjectUrl();
+      fileInput.value = "";
+      image.src = courseImage;
+      image.alt = "Gas pump image from the Imagenette dataset";
+      imageCaption.textContent = "Gas pump image from the course Imagenette lab.";
+      clearLiveOutput();
+      status.textContent = "Course image ready. Run the pretrained CNN when you want to calculate its outputs.";
+    });
+
+    fileInput.addEventListener("change", () => {
+      const file = fileInput.files && fileInput.files[0];
+      if (!file) return;
+      if (!file.type || !file.type.startsWith("image/")) {
+        fileInput.value = "";
+        status.textContent = "Please choose an image file.";
+        return;
+      }
+      releaseObjectUrl();
+      objectUrl = window.URL.createObjectURL(file);
+      image.src = objectUrl;
+      image.alt = "User-selected image";
+      imageCaption.textContent = file.name + " selected locally; it stays in this browser.";
+      clearLiveOutput();
+      status.textContent = "Local image ready. Run the pretrained CNN to calculate predictions and activation maps.";
+    });
 
     async function renderFeatureMaps(tensor, target, stageName) {
       const shape = tensor && tensor.shape ? tensor.shape : [];
@@ -252,15 +303,22 @@
       if (loading) return;
       loading = true;
       button.disabled = true;
+      if (!image.complete || !image.naturalWidth) {
+        status.textContent = "The selected image is still loading. Please try again when its preview appears.";
+        button.disabled = false;
+        loading = false;
+        return;
+      }
       if (!window.tf || !window.mobilenet) {
         status.textContent = "The optional TensorFlow.js model is unavailable; the real course maps above remain available.";
         button.disabled = false;
         loading = false;
         return;
       }
-      status.textContent = "Loading MobileNetV1 pretrained on ImageNet…";
+      status.textContent = modelCache ? "Running MobileNetV1 on the selected image…" : "Loading MobileNetV1 pretrained on ImageNet…";
       try {
-        const model = await window.mobilenet.load({version: 1, alpha: 1.0});
+        if (!modelCache) modelCache = await window.mobilenet.load({version: 1, alpha: 1.0});
+        const model = modelCache;
         const predictions = await model.classify(image, 3);
         prediction.textContent = "Top-3 classifier output: " + predictions.map(item => item.className + " (" + (item.probability * 100).toFixed(1) + "%)").join(" · ");
         live.hidden = false;
