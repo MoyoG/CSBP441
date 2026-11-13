@@ -782,3 +782,10 @@ window.COURSE_DATA = {
     problemTypes: []
   }
 };
+
+// The course numbering places SIFT at LN10 and corner detection at LN11.
+(() => {
+  const ln10Content = window.COURSE_DATA[10];
+  window.COURSE_DATA[10] = window.COURSE_DATA[11];
+  window.COURSE_DATA[11] = ln10Content;
+})();
