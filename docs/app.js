@@ -269,16 +269,23 @@
     async function renderFeatureMaps(tensor, target, stageName) {
       const shape = tensor && tensor.shape ? tensor.shape : [];
       if (shape.length < 3) return 0;
-      const height = shape[shape.length - 3];
-      const width = shape[shape.length - 2];
-      const channels = shape[shape.length - 1];
+      const rank = shape.length;
+      const isNchw = rank === 4
+        ? shape[0] === 1 && shape[2] === shape[3] && shape[1] !== shape[2]
+        : rank === 3 && shape[1] === shape[2] && shape[0] !== shape[1];
+      const height = isNchw ? shape[rank - 2] : shape[rank - 3];
+      const width = isNchw ? shape[rank - 1] : shape[rank - 2];
+      const channels = isNchw ? shape[rank - 3] : shape[rank - 1];
       if (!height || !width || !channels || height * width * channels > 30000000) return 0;
       const values = await tensor.data();
+      const readValue = (y, x, channel) => isNchw
+        ? Number(values[(channel * height + y) * width + x]) || 0
+        : Number(values[(y * width + x) * channels + channel]) || 0;
       const scores = Array.from({length: channels}, (_, channel) => {
         let sum = 0;
         for (let y = 0; y < height; y += 1) {
           for (let x = 0; x < width; x += 1) {
-            sum += Math.abs(Number(values[(y * width + x) * channels + channel]) || 0);
+            sum += Math.abs(readValue(y, x, channel));
           }
         }
         return {channel, score: sum / (height * width)};
@@ -298,7 +305,7 @@
         let max = -Infinity;
         for (let y = 0; y < height; y += 1) {
           for (let x = 0; x < width; x += 1) {
-            const value = Number(values[(y * width + x) * channels + item.channel]) || 0;
+            const value = readValue(y, x, item.channel);
             min = Math.min(min, value);
             max = Math.max(max, value);
           }
@@ -306,7 +313,7 @@
         const span = max - min || 1;
         for (let y = 0; y < height; y += 1) {
           for (let x = 0; x < width; x += 1) {
-            const value = Number(values[(y * width + x) * channels + item.channel]) || 0;
+            const value = readValue(y, x, item.channel);
             const t = Math.max(0, Math.min(1, (value - min) / span));
             const offset = (y * width + x) * 4;
             pixels.data[offset] = Math.round(24 + 225 * t);
@@ -317,7 +324,7 @@
         }
         context.putImageData(pixels, 0, 0);
         const caption = document.createElement("figcaption");
-        caption.textContent = "Channel " + item.channel + " · mean |activation| " + item.score.toFixed(3);
+        caption.textContent = "Channel " + item.channel + " · mean |activation| " + item.score.toFixed(3) + " · " + (isNchw ? "NCHW" : "NHWC");
         figure.append(canvas, caption);
         target.append(figure);
       });
