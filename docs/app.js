@@ -1088,6 +1088,23 @@
       return {level:"Orientation assignment",title:"Find the principal SIFT orientation",question:render(initial).question,solution:render(initial).solution,editor:{kind:"bank",fields:angles.map((value,i)=>({id:`angle${i}`,label:`Gradient angle ${i+1}`,value,step:.5})),solve:v=>render({angles:Array.from({length:12},(_,i)=>v[`angle${i}`])})}};
     }
 
+    if (type === "yolo-score") {
+      const distributions=[[.70,.20,.10],[.15,.70,.15],[.10,.25,.65],[.45,.45,.10],[.60,.10,.30],[.25,.55,.20]];
+      const predictions=Array.from({length:4},()=>[pick(rng,[.55,.65,.75,.85,.95]),pick(rng,[.35,.45,.55,.65,.75,.85]),...pick(rng,distributions)]);
+      const render=v=>{
+        const names=["Car","Person","Bicycle"];
+        const rows=v.predictions.map((row,index)=>{
+          const objectness=row[0], iou=row[1], probabilities=row.slice(2), confidence=objectness*iou, scores=probabilities.map(value=>confidence*value), bestIndex=scores.indexOf(Math.max(...scores));
+          return {index,objectness,iou,probabilities,confidence,scores,bestIndex};
+        });
+        const table=rows.map(row=>`<tr><td>Box ${row.index+1}</td><td>${fmt(row.objectness)}</td><td>${fmt(row.iou)}</td><td>${fmt(row.confidence)}</td>${row.scores.map((score,i)=>`<td>${fmt(score)}${i===row.bestIndex?" ★":""}</td>`).join("")}<td>${names[row.bestIndex]}</td></tr>`).join("");
+        const strongest=rows.flatMap(row=>row.scores.map((score,i)=>({box:row.index+1,className:names[i],score}))).reduce((a,b)=>b.score>a.score?b:a);
+        return {question:`<p>Four YOLO candidate boxes produce the following values. The columns are <strong>Pr(Object), IoU, Pr(Car|Object), Pr(Person|Object), and Pr(Bicycle|Object)</strong>.</p>${matrixHTML(v.predictions)}<p>For each box calculate object confidence <strong>C<sub>j</sub>=Pr(Object)×IoU</strong>, then calculate each class-specific score <strong>S<sub>j,c</sub>=C<sub>j</sub>×Pr(c|Object)</strong>. Identify the best class for every box and the strongest detection overall.</p>`,solution:`<table class="results-table"><thead><tr><th>Box</th><th>Pr(Object)</th><th>IoU</th><th>C<sub>j</sub></th><th>Car score</th><th>Person score</th><th>Bicycle score</th><th>Best class</th></tr></thead><tbody>${table}</tbody></table><p>The strongest class-specific detection is <strong>Box ${strongest.box}, ${strongest.className}</strong> with score <strong>${fmt(strongest.score)}</strong>.</p><p>Notice the distinction: object confidence uses objectness and IoU, while the class-specific score additionally multiplies by the conditional class probability.</p>`};
+      };
+      const initial={predictions};
+      return {level:"YOLO post-processing",title:"Calculate class-specific YOLO scores",question:render(initial).question,solution:render(initial).solution,editor:{kind:"bank",fields:[{id:"predictions",label:"Four-box YOLO predictions",type:"matrix",value:predictions}],solve:v=>render({predictions:v.predictions})}};
+    }
+
     const reference=[int(rng,1,8),int(rng,1,8),int(rng,1,8),int(rng,1,8)].map(value=>value/10);
     const candidateA=[...reference].map(value=>clamp(value+int(rng,-2,2)/10,0,1));
     const candidateB=Array.from({length:4},()=>int(rng,0,10)/10);

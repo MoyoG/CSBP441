@@ -695,7 +695,7 @@ window.COURSE_DATA = {
       {q:"A SIFT descriptor describes the entire image with one global average color.",answer:false,why:"It describes local gradient structure around a keypoint."},
       {q:"Descriptor distances can be used to rank possible feature matches.",answer:true,why:"The nearest descriptor is the candidate with the smallest distance."}
     ],
-    problemTypes: [["sift-template","Template matching with SSD"],["sift-ncc","Normalized cross-correlation"],["sift-scale","Scale-space blob detection"],["sift-orientation","Principal orientation histogram"],["sift-descriptor","SIFT descriptor matching"]]
+    problemTypes: [["sift-template","Template matching with SSD"],["sift-ncc","Normalized cross-correlation"],["sift-scale","Scale-space blob detection"],["sift-orientation","Principal orientation histogram"],["sift-descriptor","SIFT descriptor matching"],["yolo-score","YOLO class-specific scores for 4 boxes"]]
   },
   12: {
     short: "YOLO",
