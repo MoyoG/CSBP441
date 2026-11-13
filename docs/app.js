@@ -864,6 +864,50 @@
       if (problem.editor?.kind==="filter") bindFilterEditor(problem.editor);
       if (problem.editor?.kind==="bank") bindBankEditor(problem.editor);
       if (problem.editor?.kind==="logic") bindLogicEditor(problem.editor, host);
+      if (problem.editor?.kind==="sift-template") bindSiftTemplateEditor(problem.editor);
+    }
+    function bindSiftTemplateEditor(editor) {
+      const imageCanvas=host.querySelector("#sift-template-image"), templateCanvas=host.querySelector("#sift-template-template"), heatmapCanvas=host.querySelector("#sift-template-heatmap");
+      const imageUpload=host.querySelector("#sift-image-upload"), templateUpload=host.querySelector("#sift-template-upload"), resetButton=host.querySelector("#sift-template-reset");
+      const status=host.querySelector("#sift-template-status"), bestOutput=host.querySelector("#sift-template-best");
+      const state={image:editor.image,template:editor.template,candidateLocations:editor.candidateLocations,source:"Generated example"};
+      const canvasSize=320;
+      const range=matrix=>{const values=matrix.flat(),min=Math.min(...values),max=Math.max(...values);return {min,max};};
+      const cellGeometry=matrix=>{const rows=matrix.length,cols=matrix[0].length,cell=Math.min(280/Math.max(rows,cols),canvasSize);return {rows,cols,cell,offsetX:(canvasSize-cols*cell)/2,offsetY:(canvasSize-rows*cell)/2};};
+      const drawMatrix=(canvas,matrix,overlays=[])=>{
+        const context=canvas.getContext("2d"), geometry=cellGeometry(matrix), limits=range(matrix), spread=limits.max-limits.min||1;
+        canvas.width=canvasSize; canvas.height=canvasSize; context.clearRect(0,0,canvasSize,canvasSize); context.fillStyle="#f5f8fa"; context.fillRect(0,0,canvasSize,canvasSize);
+        for(let row=0;row<geometry.rows;row++)for(let column=0;column<geometry.cols;column++){
+          const shade=Math.round(255*(matrix[row][column]-limits.min)/spread),x=geometry.offsetX+column*geometry.cell,y=geometry.offsetY+row*geometry.cell;
+          context.fillStyle=`rgb(${shade},${shade},${shade})`; context.fillRect(x,y,geometry.cell,geometry.cell); context.strokeStyle="rgba(23,58,94,.24)"; context.strokeRect(x,y,geometry.cell,geometry.cell);
+        }
+        overlays.forEach(item=>{const x=geometry.offsetX+item.col*geometry.cell,y=geometry.offsetY+item.row*geometry.cell,w=item.width*geometry.cell,h=item.height*geometry.cell;context.fillStyle="rgba(8,127,117,.16)";context.fillRect(x,y,w,h);context.strokeStyle="#087f75";context.lineWidth=3;context.strokeRect(x+1.5,y+1.5,w-3,h-3);context.fillStyle="#087f75";context.font="700 14px sans-serif";context.fillText(item.name,x+4,y+16);});
+        canvas.setAttribute("aria-label",`${matrix.length} by ${matrix[0].length} grayscale matrix visualization`);
+      };
+      const calculateMap=()=>{
+        const image=state.image,template=state.template,rows=image.length-template.length+1,cols=image[0].length-template[0].length+1;
+        if(rows<1||cols<1)return null;
+        const values=Array.from({length:rows},(_,row)=>Array.from({length:cols},(_,column)=>{let score=0;for(let y=0;y<template.length;y++)for(let x=0;x<template[0].length;x++)score+=(image[row+y][column+x]-template[y][x])**2;return score;}));
+        let best={row:0,col:0,ssd:values[0][0]}; values.forEach((line,row)=>line.forEach((ssd,col)=>{if(ssd<best.ssd)best={row,col,ssd};})); return {values,best};
+      };
+      const drawHeatmap=(canvas,result)=>{
+        const values=result.values,geometry=cellGeometry(values),limits=range(values),spread=limits.max-limits.min||1,context=canvas.getContext("2d");
+        canvas.width=canvasSize; canvas.height=canvasSize; context.clearRect(0,0,canvasSize,canvasSize); context.fillStyle="#f5f8fa"; context.fillRect(0,0,canvasSize,canvasSize);
+        for(let row=0;row<geometry.rows;row++)for(let column=0;column<geometry.cols;column++){const t=(values[row][column]-limits.min)/spread,x=geometry.offsetX+column*geometry.cell,y=geometry.offsetY+row*geometry.cell;context.fillStyle=`rgb(${Math.round(8+220*t)},${Math.round(127-65*t)},${Math.round(117-75*t)})`;context.fillRect(x,y,geometry.cell,geometry.cell);context.strokeStyle="rgba(255,255,255,.45)";context.strokeRect(x,y,geometry.cell,geometry.cell);if(geometry.rows<=10&&geometry.cols<=10){context.fillStyle="#fff";context.font="600 10px sans-serif";context.textAlign="center";context.textBaseline="middle";context.fillText(String(values[row][column]),x+geometry.cell/2,y+geometry.cell/2);}}
+        const x=geometry.offsetX+result.best.col*geometry.cell,y=geometry.offsetY+result.best.row*geometry.cell;context.strokeStyle="#173a5e";context.lineWidth=4;context.strokeRect(x+2,y+2,geometry.cell-4,geometry.cell-4);canvas.setAttribute("aria-label",`SSD heatmap with best match at row ${result.best.row+1}, column ${result.best.col+1}`);
+      };
+      const render=()=>{
+        const overlays=state.source==="Generated example"?state.candidateLocations.map(item=>({...item,width:state.template[0].length,height:state.template.length})):[];
+        drawMatrix(imageCanvas,state.image,overlays); drawMatrix(templateCanvas,state.template);
+        const result=calculateMap();
+        if(!result){status.textContent="The template must be smaller than the search image in both dimensions.";bestOutput.textContent="No valid SSD scan is available.";const context=heatmapCanvas.getContext("2d");context.clearRect(0,0,heatmapCanvas.width,heatmapCanvas.height);return;}
+        drawHeatmap(heatmapCanvas,result); status.textContent=`${state.source}. Search image: ${state.image[0].length}×${state.image.length}; template: ${state.template[0].length}×${state.template.length}. Lower SSD values indicate better matches.`; bestOutput.textContent=`Best live match: top-left row ${result.best.row+1}, column ${result.best.col+1}; SSD = ${result.best.ssd}.`;
+      };
+      const loadFile=(file,maxDimension)=>new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=()=>reject(new Error("the file could not be read"));reader.onload=()=>{const image=new Image();image.onerror=()=>reject(new Error("the file is not a readable image"));image.onload=()=>{const scale=Math.min(1,maxDimension/Math.max(image.naturalWidth||image.width,image.naturalHeight||image.height)),width=Math.max(1,Math.round((image.naturalWidth||image.width)*scale)),height=Math.max(1,Math.round((image.naturalHeight||image.height)*scale)),canvas=document.createElement("canvas");canvas.width=width;canvas.height=height;const context=canvas.getContext("2d");context.drawImage(image,0,0,width,height);const pixels=context.getImageData(0,0,width,height).data;resolve(Array.from({length:height},(_,row)=>Array.from({length:width},(_,column)=>{const i=(row*width+column)*4;return Math.round(.299*pixels[i]+.587*pixels[i+1]+.114*pixels[i+2]);})));};image.src=reader.result;};reader.readAsDataURL(file);});
+      imageUpload.addEventListener("change",async()=>{if(!imageUpload.files[0])return;try{state.image=await loadFile(imageUpload.files[0],64);state.candidateLocations=[];state.source="Uploaded search image with generated template";render();}catch(error){status.textContent=`Upload failed: ${error.message}.`;}});
+      templateUpload.addEventListener("change",async()=>{if(!templateUpload.files[0])return;try{state.template=await loadFile(templateUpload.files[0],24);state.candidateLocations=[];state.source="Uploaded template with current search image";render();}catch(error){status.textContent=`Upload failed: ${error.message}.`;}});
+      resetButton.addEventListener("click",()=>{state.image=editor.image;state.template=editor.template;state.candidateLocations=editor.candidateLocations;state.source="Generated example";imageUpload.value="";templateUpload.value="";render();});
+      render();
     }
     function bindBankEditor(editor) {
       host.querySelector("#recalculate-bank").addEventListener("click",()=>{
@@ -945,7 +989,7 @@
     if (lecture===5) return generateLN5(type,rng,options);
     if (lecture===6) return generateLN6(type,rng);
     if (lecture===8) return generateLN8(type,rng);
-    if (lecture===11) return generateLN11(type,rng);
+    if (data.problemDomain==="sift") return generateLN11(type,rng);
     return generateLN7(type,rng);
   }
 
@@ -1329,18 +1373,24 @@
     const matrixEnergy = a => a.reduce((sum,row)=>sum+row.reduce((rowSum,value)=>rowSum+value*value,0),0);
 
     if (type === "sift-template") {
-      const template=Array.from({length:2},()=>Array.from({length:2},()=>int(rng,1,8)));
-      const patchA=template.map(row=>row.map(value=>clamp(value+int(rng,-2,2))));
-      const patchB=Array.from({length:2},()=>Array.from({length:2},()=>int(rng,0,9)));
+      const template=Array.from({length:3},()=>Array.from({length:3},()=>int(rng,1,8)));
+      const patchA=template.map(row=>row.map(value=>value));
+      const patchB=Array.from({length:3},()=>Array.from({length:3},()=>int(rng,0,9)));
       const patchC=template.map(row=>row.map(value=>clamp(9-value+int(rng,-1,1))));
+      const image=Array.from({length:8},()=>Array.from({length:8},()=>int(rng,0,9)));
+      const candidateLocations=[{name:"A",row:0,col:0},{name:"B",row:0,col:5},{name:"C",row:5,col:2}];
+      const paste=(target,patch,location)=>patch.forEach((row,r)=>row.forEach((value,c)=>{target[location.row+r][location.col+c]=value;}));
+      paste(image,patchA,candidateLocations[0]); paste(image,patchB,candidateLocations[1]); paste(image,patchC,candidateLocations[2]);
       const render=v=>{
         const candidates=[["A",v.patchA],["B",v.patchB],["C",v.patchC]];
         const scores=candidates.map(([name,patch])=>({name,score:matrixSSD(v.template,patch)}));
         const best=scores.reduce((a,b)=>b.score<a.score?b:a);
         const table=scores.map(item=>`<tr><td>${item.name}</td><td>${item.score}</td><td>${item.name===best.name?"Best match":""}</td></tr>`).join("");
-        return {question:`<p>Use sum of squared differences, <strong>SSD=Σ(t−f)²</strong>, to compare the 2×2 template with each candidate patch. Which candidate is the best match?</p><p><strong>Template</strong>${matrixHTML(v.template)}</p><div><strong>Candidate A</strong>${matrixHTML(v.patchA)} <strong>Candidate B</strong>${matrixHTML(v.patchB)} <strong>Candidate C</strong>${matrixHTML(v.patchC)}</div><p>Template matching selects the candidate with the <strong>smallest</strong> SSD.</p>`,solution:`<table class="results-table"><thead><tr><th>Candidate</th><th>SSD</th><th>Decision</th></tr></thead><tbody>${table}</tbody></table><p>Therefore candidate <strong>${best.name}</strong> is selected because its squared difference is smallest.</p>`};
+        const lab=`<section class="sift-template-lab" aria-label="Interactive SSD template matching exploration"><div class="sift-template-upload-row"><label class="sift-template-upload">Upload search image<input id="sift-image-upload" type="file" accept="image/*"></label><label class="sift-template-upload">Upload template image<input id="sift-template-upload" type="file" accept="image/*"></label><button class="button button-secondary" id="sift-template-reset" type="button">Use generated example</button></div><div class="sift-template-visual-grid"><figure><canvas id="sift-template-image" class="sift-template-canvas" role="img" aria-label="Search image visualization"></canvas><figcaption>Search image with candidate regions</figcaption></figure><figure><canvas id="sift-template-template" class="sift-template-canvas" role="img" aria-label="Template image visualization"></canvas><figcaption>Template image</figcaption></figure><figure><canvas id="sift-template-heatmap" class="sift-template-canvas" role="img" aria-label="SSD heatmap"></canvas><figcaption>SSD map: darker/teal cells are lower SSD matches</figcaption></figure></div><p id="sift-template-status" class="sift-template-status" aria-live="polite"></p><p id="sift-template-best" class="sift-template-best" aria-live="polite"></p></section>`;
+        return {question:`${lab}<p>Use sum of squared differences, <strong>SSD=Σ(t−f)²</strong>, to compare the 3×3 template with each candidate patch. Which candidate is the best match? The visualization scans the full 8×8 search image and highlights the lowest-SSD location.</p><p><strong>Template</strong>${matrixHTML(v.template)}</p><div><strong>Candidate A</strong>${matrixHTML(v.patchA)} <strong>Candidate B</strong>${matrixHTML(v.patchB)} <strong>Candidate C</strong>${matrixHTML(v.patchC)}</div><p>Template matching selects the candidate with the <strong>smallest</strong> SSD. Upload your own search image and template above to explore the same sliding-window calculation.</p>`,solution:`<table class="results-table"><thead><tr><th>Candidate</th><th>SSD</th><th>Decision</th></tr></thead><tbody>${table}</tbody></table><p>Therefore candidate <strong>${best.name}</strong> is selected because its squared difference is smallest. The live heatmap independently scans every valid top-left position in the search image.</p>`};
       };
-      return {level:"Template matching",title:"Choose a template match with SSD",question:render({template,patchA,patchB,patchC}).question,solution:render({template,patchA,patchB,patchC}).solution,editor:{kind:"bank",fields:[{id:"template",label:"Template",type:"matrix",value:template},{id:"patchA",label:"Candidate A",type:"matrix",value:patchA},{id:"patchB",label:"Candidate B",type:"matrix",value:patchB},{id:"patchC",label:"Candidate C",type:"matrix",value:patchC}],solve:render}};
+      const initial={template,patchA,patchB,patchC};
+      return {level:"Template matching",title:"Choose a template match with SSD",question:render(initial).question,solution:render(initial).solution,editor:{kind:"sift-template",image,template,candidateLocations}};
     }
 
     if (type === "sift-ncc") {
