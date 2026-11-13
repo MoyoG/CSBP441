@@ -62,6 +62,66 @@
    - C. Added without division
    - D. Computed only for the output bias
 
+11. What is the derivative of the sigmoid when its output is (h=0.5)?
+   - A. (0)
+   - B. (0.25)
+   - C. (0.5)
+   - D. (1)
+
+12. For (x=(0,1)), (w_{21}=0.20), and (b_1=-0.10), what is the hidden pre-activation (z_1)?
+   - A. (-0.30)
+   - B. (-0.10)
+   - C. (0.10)
+   - D. (0.30)
+
+13. If the output pre-activation is (z^o=0), what is the sigmoid prediction?
+   - A. (0)
+   - B. (0.25)
+   - C. (0.5)
+   - D. (1)
+
+14. For (y=1) and (hat y=0.80), what is the output error for sigmoid plus binary cross-entropy?
+   - A. (0.80)
+   - B. (0.20)
+   - C. (-0.20)
+   - D. (-0.80)
+
+15. If an input value (x_i=0), what is the gradient of its connected weight for that training example?
+   - A. Always (1)
+   - B. Always equal to the learning rate
+   - C. Zero
+   - D. Equal to the output probability
+
+16. Which expression correctly updates the output bias?
+   - A. (b^o_{new}=b^o+etadelta^o)
+   - B. (b^o_{new}=b^o-etadelta^o)
+   - C. (b^o_{new}=eta b^o)
+   - D. (b^o_{new}=b^o/eta)
+
+17. If the gradient remains unchanged and the learning rate increases from (0.1) to (0.2), what happens to the update step?
+   - A. It becomes half as large
+   - B. It becomes twice as large
+   - C. It becomes zero
+   - D. It changes direction automatically
+
+18. Which terms are needed to calculate a hidden-neuron error?
+   - A. Only the target label
+   - B. The output error, outgoing weight, and sigmoid derivative
+   - C. Only the input value
+   - D. Only the learning rate
+
+19. Why are nonlinear hidden activations necessary for solving XOR?
+   - A. They reduce the number of parameters to zero
+   - B. They allow the network to represent nonlinear decision boundaries
+   - C. They make XOR linearly separable
+   - D. They remove the need for biases
+
+20. What is approximately (sigma(-2))?
+   - A. (0.119)
+   - B. (0.269)
+   - C. (0.500)
+   - D. (0.881)
+
 ## Part B: True or False
 
 1. A 2–2–1 MLP has two input neurons, two hidden neurons, and one output neuron.
@@ -74,6 +134,17 @@
 8. A negative output error for a positive target means the predicted probability is too low.
 9. The learning rate should be multiplied into the loss before backpropagation.
 10. Updating weights requires recomputing the forward pass to see the new predictions.
+
+11. The sigmoid derivative can be calculated from its output as (sigma'(z)=h(1-h)).
+12. For a target (y=0), a positive output error (delta^o=hat y-y) means that the predicted probability is greater than zero.
+13. If (x_i=0), the gradient of the weight connected to (x_i) is zero for that training example.
+14. A bias can affect a neuron's activation even when all input values are zero.
+15. For binary cross-entropy when (y=1), the loss is (L=-ln(hat y)).
+16. If the learning rate is zero, the network parameters remain unchanged after the update.
+17. A larger learning rate always guarantees faster and more stable convergence.
+18. If the hidden-layer activation is linear, stacking multiple linear layers still produces an overall linear function.
+19. If a hidden neuron has an outgoing weight of zero, its backpropagated error is zero.
+20. For sigmoid output with binary cross-entropy, the output error is (delta^o=(hat y-y)hat y(1-hat y)).
 
 ## Part C: Problem Solving
 

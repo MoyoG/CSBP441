@@ -2,11 +2,11 @@
 
 ## Multiple Choice
 
-1. C  2. B  3. B  4. B  5. B  6. B  7. A  8. B  9. B  10. B
+1. C  2. B  3. B  4. B  5. B  6. B  7. A  8. B  9. B  10. B  11. B  12. C  13. C  14. C  15. C  16. B  17. B  18. B  19. B  20. A
 
 ## True or False
 
-1. True  2. True  3. False  4. False  5. True  6. True  7. True  8. True  9. False  10. True
+1. True  2. True  3. False  4. False  5. True  6. True  7. True  8. True  9. False  10. True  11. True  12. True  13. True  14. True  15. True  16. True  17. False  18. True  19. True  20. False
 
 ## Problem 1
 
