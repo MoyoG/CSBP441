@@ -324,8 +324,17 @@
       return scores.length;
     }
 
-    function makeInputTensor() {
-      const pixels = tf.browser.fromPixels(image);
+    function makeModelCanvas() {
+      const canvas = document.createElement("canvas");
+      canvas.width = 224;
+      canvas.height = 224;
+      const context = canvas.getContext("2d", {willReadFrequently: true});
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      return canvas;
+    }
+
+    function makeInputTensor(source) {
+      const pixels = tf.browser.fromPixels(source);
       const resized = tf.image.resizeBilinear(pixels, [224, 224], true);
       return resized.toFloat().div(127.5).sub(1).expandDims(0);
     }
@@ -347,11 +356,21 @@
         return;
       }
       status.textContent = modelCache ? "Running MobileNetV1 on the selected image…" : "Loading MobileNetV1 pretrained on ImageNet…";
+      let phase = "initializing TensorFlow.js";
       try {
+        await window.tf.ready();
+        phase = "loading MobileNetV1";
         if (!modelCache) modelCache = await window.mobilenet.load({version: 1, alpha: 1.0});
         const model = modelCache;
-        const predictions = await model.classify(image, 3);
-        prediction.textContent = "Top-3 classifier output: " + predictions.map(item => item.className + " (" + (item.probability * 100).toFixed(1) + "%)").join(" · ");
+        const modelCanvas = makeModelCanvas();
+        phase = "classifying the selected image";
+        let predictions = [];
+        try {
+          predictions = await model.classify(modelCanvas, 3);
+          prediction.textContent = "Top-3 classifier output: " + predictions.map(item => item.className + " (" + (item.probability * 100).toFixed(1) + "%)").join(" · ");
+        } catch (classificationError) {
+          prediction.textContent = "The classifier could not label this image, but intermediate maps will still be attempted.";
+        }
         live.hidden = false;
         const graph = model.model || model;
         const names = graphNodeNames(graph);
@@ -364,7 +383,8 @@
         let rendered = 0;
         try {
           if (!graph || typeof graph.execute !== "function") throw new Error("internal graph unavailable");
-          input = makeInputTensor();
+          phase = "calculating intermediate activation maps";
+          input = makeInputTensor(modelCanvas);
           for (const stage of stages) {
             const nodeName = findNode(names, stage.patterns);
             const target = host.querySelector("#cnn-feature-" + stage.key);
@@ -384,8 +404,9 @@
         }
       } catch (error) {
         live.hidden = false;
-        status.textContent = "The pretrained model could not be loaded in this browser. The real course activation maps remain available above.";
-        prediction.textContent = "Live model status: unavailable.";
+        const detail = error && error.message ? String(error.message).replace(/\s+/g, " ").slice(0, 180) : "unknown browser error";
+        status.textContent = "The CNN stopped while " + phase + ": " + detail + ". The real course activation maps remain available above.";
+        prediction.textContent = "Live model status: retry after checking the browser connection and image format.";
       } finally {
         button.disabled = false;
         loading = false;
