@@ -671,6 +671,7 @@ window.COURSE_DATA = {
       "SIFT uses a principal orientation and local gradient-direction histograms to support robust matching."
     ],
     notebooks: [],
+    problemDomain: "sift",
     mcqs: [
       {q:"Which task assigns one category to the whole image without locating individual objects?",options:["Image classification","Object detection","Semantic segmentation","Identification"],answer:0,why:"Classification produces an image-level class label."},
       {q:"For SSD template matching, which candidate is selected?",options:["The candidate with the largest SSD","The candidate with the smallest SSD","The candidate with the highest average brightness","The candidate nearest the image border"],answer:1,why:"SSD measures squared difference, so a smaller value means a closer match."},
