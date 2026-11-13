@@ -219,11 +219,38 @@
       return typeof store.keys === "function" ? Array.from(store.keys()) : Object.keys(store);
     }
 
-    function findNode(names, patternGroups) {
-      return names.find(name => {
-        const lower = String(name).toLowerCase();
-        return patternGroups.some(group => group.every(token => lower.includes(token)));
-      });
+    async function findActivationNode(graph, input, names, patternGroups) {
+      let candidates = [];
+      for (const group of patternGroups) {
+        candidates = names.filter(name => {
+          const lower = String(name).toLowerCase();
+          return group.every(token => lower.includes(token));
+        });
+        if (candidates.length) break;
+      }
+      candidates = candidates.filter(name => !/(const|kernel|weight|bias|shape|readvariable|moving)/i.test(String(name)));
+      let best = null;
+      for (const name of candidates) {
+        let output = null;
+        try {
+          output = graph.execute(input, name);
+          const tensor = Array.isArray(output) ? output[0] : output;
+          const shape = tensor && tensor.shape ? tensor.shape : [];
+          if (shape.length !== 4 || shape[0] !== 1) continue;
+          const isNchw = shape[2] === shape[3] && shape[1] !== shape[2];
+          const height = isNchw ? shape[2] : shape[1];
+          const width = isNchw ? shape[3] : shape[2];
+          const channels = isNchw ? shape[1] : shape[3];
+          if (height < 2 || width < 2 || channels < 2) continue;
+          const area = height * width;
+          if (!best || area > best.area) best = {name, area};
+        } catch (error) {
+          // Try the next graph node; converted model graphs contain helper nodes.
+        } finally {
+          disposeOutput(output);
+        }
+      }
+      return best ? best.name : null;
     }
 
     function disposeOutput(output) {
@@ -404,7 +431,7 @@
           phase = "calculating intermediate activation maps";
           input = makeInputTensor(modelCanvas);
           for (const stage of stages) {
-            const nodeName = findNode(names, stage.patterns);
+            const nodeName = await findActivationNode(graph, input, names, stage.patterns);
             const target = host.querySelector("#cnn-feature-" + stage.key);
             if (!nodeName || !target) continue;
             const output = graph.execute(input, nodeName);
