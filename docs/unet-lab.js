@@ -9,6 +9,26 @@
     { key: "cat", label: "Close-up cat", note: "Course example", src: "assets/yolo-sample-cat.png" },
     { key: "pump", label: "Gas pump", note: "Imagenette example", src: "assets/imagenette-gas-pump.png" }
   ];
+  var COCO_CLASSES = [
+    "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat",
+    "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat",
+    "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe", "backpack",
+    "umbrella", "handbag", "tie", "suitcase", "frisbee", "skis", "snowboard", "sports ball",
+    "kite", "baseball bat", "baseball glove", "skateboard", "surfboard", "tennis racket",
+    "bottle", "wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana", "apple",
+    "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair",
+    "couch", "potted plant", "bed", "dining table", "toilet", "tv", "laptop", "mouse",
+    "remote", "keyboard", "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator",
+    "book", "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush"
+  ];
+  var ORT_VERSION = "1.30.0";
+  var ORT_DIST = "https://cdn.jsdelivr.net/npm/onnxruntime-web@" + ORT_VERSION + "/dist/";
+  var SEGMENT_MODEL = {
+    label: "YOLO11n-seg · COCO80 · ONNX",
+    shortLabel: "YOLO11n-seg",
+    url: "https://huggingface.co/unileon-robotics/YOLO11-ONNX/resolve/main/dynamic/yolo11n-seg.onnx",
+    inputSize: 640
+  };
   var stageInfo = [
     ["input", "Input image", "RGB image enters the network."],
     ["encoder", "Encoder detail", "Local contrast and edges are retained while the grid contracts."],
@@ -44,6 +64,7 @@
       "<div class='unet-step-controls'><label class='unet-field'><span>Highlight one stage</span><select id='unet-stage-select'><option value='all'>Show complete pipeline</option>" + stageInfo.map(function (stage) { return "<option value='" + stage[0] + "'>" + stage[1] + "</option>"; }).join("") + "</select></label><span class='unet-stage-status' id='unet-stage-status'>All stages are highlighted.</span></div>" +
       "<div class='unet-stage-grid'>" + stageInfo.map(function (stage) { return "<figure class='unet-stage-card' data-unet-stage='" + stage[0] + "'><div class='unet-stage-heading'><strong>" + stage[1] + "</strong><span>step " + (stageInfo.indexOf(stage) + 1) + "</span></div><canvas id='unet-stage-" + stage[0] + "' width='320' height='220' aria-label='" + stage[1] + " visualization'></canvas><figcaption>" + stage[2] + "</figcaption></figure>"; }).join("") + "</div>" +
       "<section class='unet-final-results'><div class='unet-final-heading'><div><p class='eyebrow'>Final U-Net result</p><h3>From per-pixel scores to a segmentation mask</h3><p>The final 1×1 convolution produces class scores at every pixel. This panel turns the foreground score into a binary teaching mask and overlays it on the selected image.</p></div><span class='unet-result-badge'>256×192×2 output</span></div><div class='unet-final-grid'><figure><canvas id='unet-final-mask' width='320' height='220' aria-label='Final conceptual segmentation mask'></canvas><figcaption><strong>Predicted mask</strong><br>Dark blue = background; green = foreground region selected by the conceptual score threshold.</figcaption></figure><figure><canvas id='unet-final-overlay' width='320' height='220' aria-label='Final conceptual segmentation overlay'></canvas><figcaption><strong>Segmentation overlay</strong><br>The same mask is drawn on top of the original image so the spatial result is easy to inspect.</figcaption></figure></div><p class='unet-result-summary' id='unet-result-summary' aria-live='polite'>The final result will update when an image is selected.</p></section>" +
+      "<section class='unet-real-results'><div class='unet-final-heading'><div><p class='eyebrow'>Real COCO instance segmentation</p><h3>Run a trained segmentation model in the browser</h3><p><strong>" + SEGMENT_MODEL.label + "</strong> predicts boxes, labels, confidence scores, and one mask per detected object. The weights are downloaded only when you click Run; your image stays in this browser.</p></div><span class='unet-result-badge'>80 COCO classes</span></div><div class='unet-real-controls'><label class='unet-field'><span>Confidence threshold</span><input id='unet-real-confidence' type='number' min='0.05' max='0.95' step='0.05' value='0.25'></label><label class='unet-field'><span>Mask/NMS IoU threshold</span><input id='unet-real-iou' type='number' min='0.05' max='0.95' step='0.05' value='0.45'></label><div class='unet-real-buttons'><button class='button button-primary' id='unet-run-coco' type='button'>Run YOLO11n-seg on this image</button><button class='button button-secondary' id='unet-cancel-coco' type='button' hidden>Cancel download</button><span class='unet-real-status' id='unet-real-status' aria-live='polite'>Choose an image, then run the real COCO model.</span></div></div><div class='unet-real-grid'><figure><canvas id='unet-real-mask' width='320' height='220' aria-label='Real COCO instance segmentation masks'></canvas><figcaption><strong>Instance masks</strong><br>Each color corresponds to one detected object instance.</figcaption></figure><figure><canvas id='unet-real-overlay' width='320' height='220' aria-label='Real COCO segmentation overlay'></canvas><figcaption><strong>Final boxes, labels, and masks</strong><br>Only detections that pass confidence filtering and class-specific NMS are shown.</figcaption></figure></div><p class='unet-real-summary' id='unet-real-summary' aria-live='polite'>The real model has not been run yet.</p><div class='unet-real-table-wrap' id='unet-real-table'></div><p class='unet-real-note'><strong>Model note:</strong> this is instance segmentation, not semantic segmentation. Two objects of the same COCO class receive separate masks. The model is pretrained on COCO and is not a U-Net architecture; it is included as a real segmentation comparison.</p></section>" +
       "<div class='unet-explanation-row'><div><strong>Encoder → bottleneck</strong><span>Pooling trades resolution for context.</span></div><div><strong>Up-conv → skip</strong><span>Upsampling restores a grid; concatenation restores detail.</span></div><div><strong>1×1 conv → softmax</strong><span>Each pixel receives a class score and probability distribution.</span></div></div>" +
       "<p class='unet-explorer-note'><strong>Teaching note:</strong> this is a deterministic browser visualization of the U-Net data flow, not a trained segmentation model. It makes the tensor shapes and operations visible; a real U-Net learns the filters and predicts the mask from training data.</p>" +
     "</div>";
@@ -60,6 +81,18 @@
   var finalMask = host.querySelector("#unet-final-mask");
   var finalOverlay = host.querySelector("#unet-final-overlay");
   var resultSummary = host.querySelector("#unet-result-summary");
+  var realRunButton = host.querySelector("#unet-run-coco");
+  var realCancelButton = host.querySelector("#unet-cancel-coco");
+  var realConfidenceInput = host.querySelector("#unet-real-confidence");
+  var realIouInput = host.querySelector("#unet-real-iou");
+  var realStatus = host.querySelector("#unet-real-status");
+  var realSummary = host.querySelector("#unet-real-summary");
+  var realTable = host.querySelector("#unet-real-table");
+  var realMask = host.querySelector("#unet-real-mask");
+  var realOverlay = host.querySelector("#unet-real-overlay");
+  var realState = { ortPromise: null, session: null, modelBytes: null, activeAbort: null };
+  realRunButton.disabled = true;
+  realCancelButton.hidden = true;
   var state = { image: null, objectUrl: "", sourceName: "Horse riding", activePreset: "horse" };
 
   function clamp(value, low, high) {
@@ -340,6 +373,350 @@
     status.textContent = "U-Net stages and final result updated for “" + state.sourceName + "”. This is a conceptual mask, not a trained prediction.";
   }
 
+  function configureOrt(ortApi) {
+    if (ortApi && ortApi.env && ortApi.env.wasm) {
+      ortApi.env.wasm.wasmPaths = ORT_DIST;
+      ortApi.env.wasm.numThreads = 1;
+      ortApi.env.wasm.proxy = false;
+      ortApi.env.wasm.simd = true;
+    }
+    if (ortApi) ortApi.env.logLevel = "error";
+    return ortApi;
+  }
+
+  function ensureOrt() {
+    if (window.ort) return Promise.resolve(configureOrt(window.ort));
+    if (realState.ortPromise) return realState.ortPromise;
+    realState.ortPromise = new Promise(function (resolve, reject) {
+      var script = document.createElement("script");
+      script.src = ORT_DIST + "ort.min.js";
+      script.async = true;
+      script.onload = function () {
+        if (!window.ort) reject(new Error("ONNX Runtime Web loaded without its global API."));
+        else resolve(configureOrt(window.ort));
+      };
+      script.onerror = function () { reject(new Error("Could not load ONNX Runtime Web from the CDN.")); };
+      document.head.appendChild(script);
+    });
+    return realState.ortPromise;
+  }
+
+  async function fetchModelBytes(signal) {
+    var response = await fetch(SEGMENT_MODEL.url, { mode: "cors", cache: "force-cache", signal: signal });
+    if (!response.ok) throw new Error("Model request failed with HTTP " + response.status + ".");
+    var total = Number(response.headers.get("content-length")) || 0;
+    if (!response.body || !response.body.getReader) return new Uint8Array(await response.arrayBuffer());
+    var reader = response.body.getReader();
+    var chunks = [];
+    var loaded = 0;
+    while (true) {
+      var next = await reader.read();
+      if (next.done) break;
+      if (next.value) {
+        chunks.push(next.value);
+        loaded += next.value.byteLength;
+        realStatus.textContent = "Downloading " + SEGMENT_MODEL.shortLabel + "… " + (total ? Math.round(100 * loaded / total) + "%" : Math.round(loaded / 1048576) + " MB");
+      }
+    }
+    var bytes = new Uint8Array(loaded);
+    var offset = 0;
+    chunks.forEach(function (chunk) { bytes.set(chunk, offset); offset += chunk.byteLength; });
+    return bytes;
+  }
+
+  async function getSegmentationSession(signal) {
+    if (realState.session) return realState.session;
+    var ortApi = await ensureOrt();
+    var bytes = await fetchModelBytes(signal);
+    realStatus.textContent = "Initialising " + SEGMENT_MODEL.shortLabel + " with ONNX Runtime Web…";
+    var session = await ortApi.InferenceSession.create(bytes, { executionProviders: ["wasm"], graphOptimizationLevel: "all" });
+    realState.session = { session: session, ort: ortApi };
+    return realState.session;
+  }
+
+  function makeSegmentationInput(image, ortApi) {
+    var size = SEGMENT_MODEL.inputSize;
+    var canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    var context = canvas.getContext("2d", { willReadFrequently: true });
+    var originalWidth = image.naturalWidth || image.width;
+    var originalHeight = image.naturalHeight || image.height;
+    var scale = Math.min(size / originalWidth, size / originalHeight);
+    var resizedWidth = originalWidth * scale;
+    var resizedHeight = originalHeight * scale;
+    var padX = (size - resizedWidth) / 2;
+    var padY = (size - resizedHeight) / 2;
+    context.fillStyle = "rgb(114,114,114)";
+    context.fillRect(0, 0, size, size);
+    context.drawImage(image, padX, padY, resizedWidth, resizedHeight);
+    var pixels = context.getImageData(0, 0, size, size).data;
+    var plane = size * size;
+    var tensorData = new Float32Array(3 * plane);
+    for (var channel = 0; channel < 3; channel++) {
+      for (var y = 0; y < size; y++) {
+        for (var x = 0; x < size; x++) {
+          var pixel = (y * size + x) * 4;
+          tensorData[channel * plane + y * size + x] = pixels[pixel + channel] / 255;
+        }
+      }
+    }
+    return {
+      tensor: new ortApi.Tensor("float32", tensorData, [1, 3, size, size]),
+      meta: { originalWidth: originalWidth, originalHeight: originalHeight, scale: scale, padX: padX, padY: padY, inputSize: size }
+    };
+  }
+
+  function sigmoid(value) {
+    return 1 / (1 + Math.exp(-value));
+  }
+
+  function probability(value) {
+    return value >= 0 && value <= 1 ? value : sigmoid(value);
+  }
+
+  function clampBox(box, meta) {
+    return [
+      Math.max(0, Math.min(meta.originalWidth, box[0])),
+      Math.max(0, Math.min(meta.originalHeight, box[1])),
+      Math.max(0, Math.min(meta.originalWidth, box[2])),
+      Math.max(0, Math.min(meta.originalHeight, box[3]))
+    ];
+  }
+
+  function decodeSegmentation(outputs, meta, confidenceThreshold) {
+    var tensors = Object.keys(outputs).map(function (name) { return outputs[name]; });
+    var detectionTensor = tensors.find(function (tensor) { return tensor && tensor.dims && tensor.dims.length === 3; });
+    var prototypeTensor = tensors.find(function (tensor) { return tensor && tensor.dims && tensor.dims.length === 4; });
+    if (!detectionTensor || !prototypeTensor) throw new Error("The segmentation model returned an unexpected pair of outputs.");
+    var dims = detectionTensor.dims.map(Number);
+    var channelsFirst = dims[1] < dims[2];
+    var channels = channelsFirst ? dims[1] : dims[2];
+    var candidateCount = channelsFirst ? dims[2] : dims[1];
+    var classCount = COCO_CLASSES.length;
+    var maskCount = channels - 4 - classCount;
+    if (maskCount <= 0) throw new Error("The segmentation output does not contain mask coefficients.");
+    var data = detectionTensor.data;
+    function valueAt(row, column) {
+      return channelsFirst ? Number(data[column * candidateCount + row]) : Number(data[row * channels + column]);
+    }
+    var candidates = [];
+    for (var row = 0; row < candidateCount; row++) {
+      var bestClass = -1;
+      var bestScore = -Infinity;
+      for (var classIndex = 0; classIndex < classCount; classIndex++) {
+        var score = probability(valueAt(row, 4 + classIndex));
+        if (score > bestScore) {
+          bestScore = score;
+          bestClass = classIndex;
+        }
+      }
+      if (bestScore < confidenceThreshold) continue;
+      var rawBox = [valueAt(row, 0), valueAt(row, 1), valueAt(row, 2), valueAt(row, 3)];
+      var maxCoordinate = Math.max.apply(Math, rawBox.map(Math.abs));
+      if (maxCoordinate <= 2.5) rawBox = rawBox.map(function (value) { return value * meta.inputSize; });
+      var box = clampBox([
+        (rawBox[0] - rawBox[2] / 2 - meta.padX) / meta.scale,
+        (rawBox[1] - rawBox[3] / 2 - meta.padY) / meta.scale,
+        (rawBox[0] + rawBox[2] / 2 - meta.padX) / meta.scale,
+        (rawBox[1] + rawBox[3] / 2 - meta.padY) / meta.scale
+      ], meta);
+      if (box[2] <= box[0] || box[3] <= box[1]) continue;
+      var coefficients = [];
+      for (var maskIndex = 0; maskIndex < maskCount; maskIndex++) coefficients.push(valueAt(row, 4 + classCount + maskIndex));
+      candidates.push({ id: row + 1, box: box, classId: bestClass, label: COCO_CLASSES[bestClass], score: bestScore, coefficients: coefficients });
+    }
+    return { candidates: candidates.sort(function (a, b) { return b.score - a.score; }), rawCount: candidateCount, prototypeTensor: prototypeTensor };
+  }
+
+  function boxIoU(first, second) {
+    var left = Math.max(first[0], second[0]);
+    var top = Math.max(first[1], second[1]);
+    var right = Math.min(first[2], second[2]);
+    var bottom = Math.min(first[3], second[3]);
+    var intersection = Math.max(0, right - left) * Math.max(0, bottom - top);
+    var areaFirst = Math.max(0, first[2] - first[0]) * Math.max(0, first[3] - first[1]);
+    var areaSecond = Math.max(0, second[2] - second[0]) * Math.max(0, second[3] - second[1]);
+    var union = areaFirst + areaSecond - intersection;
+    return union > 0 ? intersection / union : 0;
+  }
+
+  function segmentNms(candidates, threshold) {
+    var kept = [];
+    candidates.slice(0, 300).forEach(function (candidate) {
+      var sameClass = kept.filter(function (other) { return other.classId === candidate.classId; });
+      var bestOverlap = sameClass.reduce(function (best, other) {
+        var overlap = boxIoU(candidate.box, other.box);
+        return !best || overlap > best.iou ? { iou: overlap, by: other } : best;
+      }, null);
+      candidate.nmsIoU = bestOverlap ? bestOverlap.iou : null;
+      candidate.nmsDecision = bestOverlap && bestOverlap.iou > threshold ? "suppressed" : "kept";
+      if (candidate.nmsDecision === "kept") kept.push(candidate);
+    });
+    return kept;
+  }
+
+  function hslToRgb(hue) {
+    var h = (hue % 360) / 360;
+    var s = .78;
+    var l = .5;
+    var q = l < .5 ? l * (1 + s) : l + s - l * s;
+    var p = 2 * l - q;
+    function hueToRgb(t) {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1 / 6) return p + (q - p) * 6 * t;
+      if (t < 1 / 2) return q;
+      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+      return p;
+    }
+    return [Math.round(hueToRgb(h + 1 / 3) * 255), Math.round(hueToRgb(h) * 255), Math.round(hueToRgb(h - 1 / 3) * 255)];
+  }
+
+  function renderInstanceMasks(image, detections, prototypeTensor, meta) {
+    var protoDims = prototypeTensor.dims.map(Number);
+    var maskCount = protoDims[1];
+    var protoHeight = protoDims[2];
+    var protoWidth = protoDims[3];
+    var protoData = prototypeTensor.data;
+    var displayScale = Math.min(640 / meta.originalWidth, 640 / meta.originalHeight, 1);
+    var width = Math.max(1, Math.round(meta.originalWidth * displayScale));
+    var height = Math.max(1, Math.round(meta.originalHeight * displayScale));
+    var shown = detections.slice(0, 12);
+    var masks = shown.map(function (detection) {
+      var mask = new Uint8Array(width * height);
+      var left = Math.max(0, Math.floor(detection.box[0] * displayScale));
+      var right = Math.min(width, Math.ceil(detection.box[2] * displayScale));
+      var top = Math.max(0, Math.floor(detection.box[1] * displayScale));
+      var bottom = Math.min(height, Math.ceil(detection.box[3] * displayScale));
+      for (var y = top; y < bottom; y++) {
+        var originalY = y / displayScale;
+        var inputY = originalY * meta.scale + meta.padY;
+        var protoY = Math.max(0, Math.min(protoHeight - 1, Math.floor(inputY / meta.inputSize * protoHeight)));
+        for (var x = left; x < right; x++) {
+          var originalX = x / displayScale;
+          var inputX = originalX * meta.scale + meta.padX;
+          var protoX = Math.max(0, Math.min(protoWidth - 1, Math.floor(inputX / meta.inputSize * protoWidth)));
+          var total = 0;
+          for (var channel = 0; channel < maskCount; channel++) total += detection.coefficients[channel] * Number(protoData[channel * protoHeight * protoWidth + protoY * protoWidth + protoX]);
+          if (sigmoid(total) >= .5) mask[y * width + x] = 1;
+        }
+      }
+      return { detection: detection, mask: mask, color: hslToRgb(detection.classId * 47) };
+    });
+    var maskImage = new ImageData(width, height);
+    var overlayImage = new ImageData(width, height);
+    var sourceCanvas = document.createElement("canvas");
+    sourceCanvas.width = width;
+    sourceCanvas.height = height;
+    var sourceContext = sourceCanvas.getContext("2d");
+    sourceContext.drawImage(image, 0, 0, width, height);
+    var originalPixels = sourceContext.getImageData(0, 0, width, height);
+    for (var p = 0; p < width * height; p++) {
+      var selected = null;
+      for (var m = masks.length - 1; m >= 0; m--) if (masks[m].mask[p]) { selected = masks[m]; break; }
+      var pixel = p * 4;
+      if (selected) {
+        maskImage.data[pixel] = selected.color[0]; maskImage.data[pixel + 1] = selected.color[1]; maskImage.data[pixel + 2] = selected.color[2]; maskImage.data[pixel + 3] = 255;
+        var alpha = .46;
+        overlayImage.data[pixel] = Math.round(originalPixels.data[pixel] * (1 - alpha) + selected.color[0] * alpha);
+        overlayImage.data[pixel + 1] = Math.round(originalPixels.data[pixel + 1] * (1 - alpha) + selected.color[1] * alpha);
+        overlayImage.data[pixel + 2] = Math.round(originalPixels.data[pixel + 2] * (1 - alpha) + selected.color[2] * alpha);
+      } else {
+        maskImage.data[pixel] = 16; maskImage.data[pixel + 1] = 44; maskImage.data[pixel + 2] = 73; maskImage.data[pixel + 3] = 255;
+        overlayImage.data[pixel] = originalPixels.data[pixel]; overlayImage.data[pixel + 1] = originalPixels.data[pixel + 1]; overlayImage.data[pixel + 2] = originalPixels.data[pixel + 2];
+      }
+      overlayImage.data[pixel + 3] = 255;
+    }
+    return { masks: masks, width: width, height: height, maskImage: maskImage, overlayImage: overlayImage };
+  }
+
+  function drawRealResult(image, rendered, detections) {
+    realMask.width = rendered.width; realMask.height = rendered.height;
+    realOverlay.width = rendered.width; realOverlay.height = rendered.height;
+    realMask.getContext("2d").putImageData(rendered.maskImage, 0, 0);
+    var overlayContext = realOverlay.getContext("2d");
+    overlayContext.putImageData(rendered.overlayImage, 0, 0);
+    var scale = rendered.width / (image.naturalWidth || image.width);
+    detections.slice(0, 12).forEach(function (detection) {
+      var color = "hsl(" + ((detection.classId * 47) % 360) + " 78% 45%)";
+      var x = detection.box[0] * scale, y = detection.box[1] * scale, w = (detection.box[2] - detection.box[0]) * scale, h = (detection.box[3] - detection.box[1]) * scale;
+      overlayContext.strokeStyle = color;
+      overlayContext.lineWidth = 2;
+      overlayContext.strokeRect(x, y, w, h);
+      var label = detection.label + " " + detection.score.toFixed(2);
+      overlayContext.font = "bold 12px Arial";
+      var labelWidth = overlayContext.measureText(label).width + 8;
+      overlayContext.fillStyle = color;
+      overlayContext.fillRect(x, Math.max(0, y - 16), labelWidth, 16);
+      overlayContext.fillStyle = "#fff";
+      overlayContext.fillText(label, x + 4, Math.max(12, y - 4));
+    });
+  }
+
+  function realTableHTML(detections) {
+    if (!detections.length) return "<p class='unet-real-empty'>No objects survived the current confidence and class-specific NMS thresholds.</p>";
+    var rows = detections.slice(0, 20).map(function (detection, index) {
+      var box = detection.box.map(function (value) { return Math.round(value); }).join(", ");
+      var area = detection.maskArea ? detection.maskArea.toLocaleString() : "—";
+      return "<tr><th>" + (index + 1) + "</th><td>" + detection.label + "</td><td>" + detection.score.toFixed(3) + "</td><td>[" + box + "]</td><td>" + area + " px</td></tr>";
+    }).join("");
+    return "<table class='unet-real-table'><thead><tr><th>#</th><th>COCO class</th><th>Score</th><th>Box [x₁,y₁,x₂,y₂]</th><th>Mask area</th></tr></thead><tbody>" + rows + "</tbody></table>";
+  }
+
+  function clearRealResult(message) {
+    realMask.width = 320; realMask.height = 220;
+    realOverlay.width = 320; realOverlay.height = 220;
+    [realMask, realOverlay].forEach(function (canvas) {
+      var context = canvas.getContext("2d");
+      context.fillStyle = "#11283b";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = "#dce7ee";
+      context.font = "bold 14px Arial";
+      context.fillText("Run the COCO model to see results", 18, 110);
+    });
+    realSummary.textContent = message || "The real model has not been run yet.";
+    realTable.innerHTML = "";
+  }
+
+  async function runRealSegmentation() {
+    if (!state.image) {
+      realStatus.textContent = "Choose an image first.";
+      return;
+    }
+    var controller = new AbortController();
+    realState.activeAbort = controller;
+    realRunButton.disabled = true;
+    realCancelButton.hidden = false;
+    try {
+      realStatus.textContent = "Loading ONNX Runtime Web…";
+      var loaded = await getSegmentationSession(controller.signal);
+      realStatus.textContent = "Preparing the 640×640 input…";
+      var input = makeSegmentationInput(state.image, loaded.ort);
+      realStatus.textContent = "Running a real COCO forward pass in the browser…";
+      var inputName = loaded.session.inputNames[0] || "images";
+      var outputs = await loaded.session.run((function () { var values = {}; values[inputName] = input.tensor; return values; })());
+      var decoded = decodeSegmentation(outputs, input.meta, Math.max(0.05, Math.min(0.95, Number(realConfidenceInput.value) || .25)));
+      var nms = segmentNms(decoded.candidates, Math.max(0.05, Math.min(0.95, Number(realIouInput.value) || .45)));
+      var proto = decoded.prototypeTensor;
+      var rendered = renderInstanceMasks(state.image, nms, proto, input.meta);
+      rendered.masks.forEach(function (item) { item.detection.maskArea = item.mask.reduce(function (sum, value) { return sum + value; }, 0); });
+      drawRealResult(state.image, rendered, nms);
+      realSummary.innerHTML = "<strong>Real model complete:</strong> " + decoded.rawCount.toLocaleString() + " raw candidates → " + decoded.candidates.length + " above confidence threshold → " + nms.length + " final instance masks after class-specific NMS. The table shows the top 20 results.";
+      realTable.innerHTML = realTableHTML(nms);
+      realStatus.textContent = "Done. YOLO11n-seg processed the image locally with COCO classes.";
+      if (input.tensor && input.tensor.dispose) input.tensor.dispose();
+      Object.keys(outputs).forEach(function (name) { if (outputs[name] && outputs[name].dispose) outputs[name].dispose(); });
+    } catch (error) {
+      if (error && error.name === "AbortError") realStatus.textContent = "Model download cancelled. Run again when ready.";
+      else realStatus.textContent = "Segmentation failed: " + (error && error.message ? error.message : String(error));
+    } finally {
+      realState.activeAbort = null;
+      realRunButton.disabled = !state.image;
+      realCancelButton.hidden = true;
+    }
+  }
+
   function releaseObjectUrl() {
     if (state.objectUrl) {
       URL.revokeObjectURL(state.objectUrl);
@@ -359,6 +736,9 @@
       host.querySelectorAll(".unet-preset-button").forEach(function (button) {
         button.classList.toggle("selected", button.getAttribute("data-unet-preset") === state.activePreset);
       });
+      realRunButton.disabled = false;
+      realStatus.textContent = "Ready. Run the real COCO model when you want to compare it with the conceptual U-Net stages.";
+      clearRealResult("Image changed. Run the real COCO model to update the final result.");
       renderPipeline();
     };
     image.onerror = function () {
@@ -394,6 +774,10 @@
     }
     renderPipeline();
   });
+  realRunButton.addEventListener("click", runRealSegmentation);
+  realCancelButton.addEventListener("click", function () {
+    if (realState.activeAbort) realState.activeAbort.abort();
+  });
   resetButton.addEventListener("click", function () {
     fileInput.value = "";
     loadPreset("horse");
@@ -407,5 +791,6 @@
   });
   window.addEventListener("pagehide", releaseObjectUrl);
   stageSelect.dispatchEvent(new Event("change"));
+  clearRealResult();
   loadPreset("horse");
 })();
