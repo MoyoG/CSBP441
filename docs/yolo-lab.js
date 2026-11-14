@@ -49,13 +49,13 @@
     },
     yolo9: {
       key: "yolo9",
-      label: "YOLO9-Tiny · COCO80 · 8 MB",
+      label: "YOLO9-Tiny · COCO80 · 8 MB · latest compact",
       shortLabel: "YOLO9-Tiny",
       url: "https://huggingface.co/LibreYOLO/libreyolo-web/resolve/main/yolo9_t.onnx",
       family: "yolo9",
       inputSize: 640,
       classes: COCO_CLASSES,
-      description: "A newer compact COCO comparison. This exported head has no separate objectness column.",
+      description: "Latest compact YOLO option in this browser model zoo. This modern COCO comparison has no separate objectness column in its exported head.",
       preprocessing: "640×640 direct resize, RGB tensor, values divided by 255."
     },
     yolov1: {
@@ -111,7 +111,7 @@
       "<div class='yolo-detector-controls'>",
         "<label class='yolo-detector-field'><span>Detector model</span><select id='yolo-model'>",
           "<option value='yolox'>YOLOX-Nano · COCO80 · 3.6 MB</option>",
-          "<option value='yolo9'>YOLO9-Tiny · COCO80 · 8 MB</option>",
+          "<option value='yolo9'>YOLO9-Tiny · COCO80 · 8 MB (latest compact)</option>",
           "<option value='yolov1'>Original YOLOv1 · VOC20 · 541 MB</option>",
         "</select><small>Choose the model before running inference.</small></label>",
         "<label class='yolo-detector-field'><span>Image to analyse</span><input id='yolo-image-file' type='file' accept='image/*'><small>The image stays in this browser; only model files are fetched.</small></label>",
