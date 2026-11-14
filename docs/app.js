@@ -260,12 +260,22 @@
           "<section><h3>Deep layer · parts and object evidence</h3><div class='cnn-feature-canvas-grid' id='cnn-feature-deep'></div></section>" +
         "</div>" +
         "<p class='cnn-feature-note'>Each canvas is a selected channel from the model’s actual activation tensor. Channels are selected by mean absolute activation so the panel stays compact.</p>" +
+      "<div class='cnn-feature-current' id='cnn-feature-current' hidden>" +
+        "<p class='eyebrow'>Selected-image response</p>" +
+        "<h3>Top-response regions in this image</h3>" +
+        "<p class='cnn-feature-note'>These crops come from the image you selected. Each crop is centered on the strongest spatial response for the most active channel at that layer, so it gives an approximate view of which input region drove the response.</p>" +
+        "<div class='cnn-feature-current-grid'>" +
+          "<section><h4>Low-level response</h4><div class='cnn-feature-current-stage' id='cnn-feature-current-early'></div></section>" +
+          "<section><h4>Mid-level response</h4><div class='cnn-feature-current-stage' id='cnn-feature-current-middle'></div></section>" +
+          "<section><h4>High-level response</h4><div class='cnn-feature-current-stage' id='cnn-feature-current-deep'></div></section>" +
+        "</div>" +
+      "</div>" +
       "<div class='cnn-feature-reference' id='cnn-feature-reference' hidden>" +
-        "<p class='eyebrow'>Reference-style feature visualization</p>" +
-        "<h3>Top-activating image patches</h3>" +
-        "<p class='cnn-feature-note'>These are real images from the course Imagenette subset, ranked by actual MobileNetV1 responses at each sampled layer. The Zeiler–Fergus paper projected strong activations back to pixels; this browser view shows the original image patches that produced the strongest responses.</p>" +
+        "<p class='eyebrow'>Reference examples from Imagenette</p>" +
+        "<h3>Top-response patches from course examples</h3>" +
+        "<p class='cnn-feature-note'>These are fixed course images from the Imagenette subset, not crops from the selected image. They are ranked by MobileNetV1 responses at each sampled layer to show how different images can activate similar features.</p>" +
         "<div class='cnn-feature-controls'>" +
-          "<button class='button button-secondary' id='build-feature-gallery' type='button' disabled>Build feature gallery</button>" +
+          "<button class='button button-secondary' id='build-feature-gallery' type='button' disabled>Build reference gallery</button>" +
           "<span class='cnn-feature-gallery-status' id='cnn-feature-gallery-status' aria-live='polite'>Run the CNN first to enable this gallery.</span>" +
         "</div>" +
         "<div class='cnn-feature-gallery-grid' id='cnn-feature-gallery-grid' hidden>" +
@@ -284,6 +294,7 @@
     const imageCaption = host.querySelector("#cnn-feature-input-caption");
     const live = host.querySelector("#cnn-feature-live");
     const prediction = host.querySelector("#cnn-feature-prediction");
+    const currentResponses = host.querySelector("#cnn-feature-current");
     const gallery = host.querySelector("#cnn-feature-reference");
     const galleryButton = host.querySelector("#build-feature-gallery");
     const galleryStatus = host.querySelector("#cnn-feature-gallery-status");
@@ -364,6 +375,7 @@
     function clearLiveOutput() {
       live.hidden = true;
       prediction.textContent = "";
+      currentResponses.hidden = true;
       gallery.hidden = true;
       galleryGrid.hidden = true;
       galleryButton.disabled = true;
@@ -375,6 +387,8 @@
         if (target) target.replaceChildren();
         const galleryTarget = host.querySelector("#cnn-feature-gallery-" + key);
         if (galleryTarget) galleryTarget.replaceChildren();
+        const currentTarget = host.querySelector("#cnn-feature-current-" + key);
+        if (currentTarget) currentTarget.replaceChildren();
       });
     }
 
@@ -489,7 +503,7 @@
     function makeInputTensor(source) {
       const pixels = tf.browser.fromPixels(source);
       const resized = tf.image.resizeBilinear(pixels, [224, 224], true);
-      return resized.toFloat().div(127.5).sub(1).expandDims(0);
+      return resized.toFloat().div(255).expandDims(0);
     }
 
     function loadImageAsset(src) {
@@ -576,13 +590,37 @@
       });
     }
 
+    function renderCurrentResponseStage(stage, sourceCanvas, summary) {
+      const target = host.querySelector("#cnn-feature-current-" + stage.key);
+      if (!target || !summary) return;
+      target.replaceChildren();
+      const figure = document.createElement("figure");
+      figure.className = "cnn-feature-patch-card";
+      const canvas = document.createElement("canvas");
+      canvas.className = "cnn-feature-current-patch";
+      canvas.width = 224;
+      canvas.height = 224;
+      canvas.setAttribute("aria-label", stage.title + " top-response region from the selected image");
+      const context = canvas.getContext("2d");
+      const centerX = (summary.x + 0.5) * 224 / summary.width;
+      const centerY = (summary.y + 0.5) * 224 / summary.height;
+      const size = Math.min(stage.patchSize, 224);
+      const sourceX = Math.max(0, Math.min(224 - size, centerX - size / 2));
+      const sourceY = Math.max(0, Math.min(224 - size, centerY - size / 2));
+      context.drawImage(sourceCanvas, sourceX, sourceY, size, size, 0, 0, 224, 224);
+      const caption = document.createElement("figcaption");
+      caption.textContent = "Channel " + summary.channel + " · mean |activation| " + summary.score.toFixed(2) + " · approximate input crop";
+      figure.append(canvas, caption);
+      target.append(figure);
+    }
+
     async function buildFeatureGallery() {
       if (galleryLoading || !activeGraph || !Object.keys(activeStageNodes).length) return;
       galleryLoading = true;
       galleryButton.disabled = true;
       galleryGrid.hidden = true;
       try {
-        galleryStatus.textContent = "Loading the real Imagenette sample gallery…";
+        galleryStatus.textContent = "Loading fixed Imagenette reference examples…";
         const montage = await loadImageAsset("assets/imagenette-samples.png");
         const samples = gallerySamples.map(sample => ({...sample, canvas: makeGallerySample(montage, sample)}));
         for (const stage of stages) {
@@ -670,7 +708,11 @@
             activeStageNodes[stage.key] = nodeName;
             const output = graph.execute(input, nodeName);
             const tensor = Array.isArray(output) ? output[0] : output;
-            if (tensor) rendered += await renderFeatureMaps(tensor, target, stage.label);
+            if (tensor) {
+              rendered += await renderFeatureMaps(tensor, target, stage.label);
+              const summary = await summarizeActivation(tensor);
+              renderCurrentResponseStage(stage, modelCanvas, summary);
+            }
             disposeOutput(output);
           }
         } finally {
@@ -678,9 +720,10 @@
         }
         if (rendered) {
           gallery.hidden = false;
+          currentResponses.hidden = false;
           galleryButton.disabled = false;
-          galleryStatus.textContent = "Click Build feature gallery to rank real Imagenette examples by layer response.";
-          status.textContent = "Loaded MobileNetV1. The live panels show actual intermediate activation tensors; build the reference-style gallery below to compare real top-activating image patches.";
+          galleryStatus.textContent = "Click Build reference gallery to rank fixed Imagenette examples by layer response.";
+          status.textContent = "Loaded MobileNetV1. The live panels and selected-image crops use the current input; build the reference gallery below to compare fixed course examples.";
         } else {
           activeGraph = null;
           activeStageNodes = {};
