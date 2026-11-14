@@ -97,10 +97,10 @@
     });
   }
 
-  function rasterizeImage(image, maxDimension, minimumDimension) {
+  function rasterizeImage(image, maxDimension, minimumDimension, sharedScale) {
     var naturalWidth = image.naturalWidth || image.width;
     var naturalHeight = image.naturalHeight || image.height;
-    var scale = Math.min(1, maxDimension / Math.max(naturalWidth, naturalHeight));
+    var scale = sharedScale ? Math.min(1, sharedScale, maxDimension / Math.max(naturalWidth, naturalHeight)) : Math.min(1, maxDimension / Math.max(naturalWidth, naturalHeight));
     if (minimumDimension) scale = Math.max(scale, minimumDimension / Math.min(naturalWidth, naturalHeight));
     var width = Math.max(1, Math.round(naturalWidth * scale));
     var height = Math.max(1, Math.round(naturalHeight * scale));
@@ -312,7 +312,7 @@
   }
 
   function detectAndDescribe(matrix) {
-    var scales = [1, 1.6, 2.4, 3.4];
+    var scales = [1, 1.6, 2.4, 3.6, 5.2, 7.2];
     var blurred = scales.map(function (sigma) { return gaussianBlur(matrix, sigma); });
     var dogs = [];
     for (var scaleIndex = 0; scaleIndex < blurred.length - 1; scaleIndex += 1) {
@@ -352,7 +352,7 @@
               }
             }
           }
-          if (maximum) candidates.push({ x: column, y: row, scale: 0.75 + dogIndex * 0.5, score: value });
+          if (maximum) candidates.push({ x: column, y: row, scale: Math.max(0.75, Math.sqrt(scales[dogIndex] * scales[dogIndex + 1]) * 0.75), score: value });
         }
       }
     });
@@ -366,9 +366,13 @@
       }
       keypoints = selectSpatial(keypoints.concat(gradientCandidates), 45, 9);
     }
+    var descriptorScaleFactors = [0.50, 0.75, 1, 1.5, 2, 3];
     keypoints.forEach(function (point) {
       point.orientation = dominantOrientation(matrix, point);
       point.descriptor = descriptorFor(matrix, point);
+      point.descriptorVariants = descriptorScaleFactors.map(function (factor) {
+        return descriptorFor(matrix, { x: point.x, y: point.y, scale: point.scale * factor, orientation: point.orientation });
+      });
     });
     return { keypoints: keypoints };
   }
@@ -382,13 +386,25 @@
     return Math.sqrt(sum);
   }
 
+  function keypointDescriptorDistance(first, second) {
+    var firstVariants = first.descriptorVariants || [first.descriptor];
+    var secondVariants = second.descriptorVariants || [second.descriptor];
+    var best = Infinity;
+    firstVariants.forEach(function (firstDescriptor) {
+      secondVariants.forEach(function (secondDescriptor) {
+        best = Math.min(best, descriptorDistance(firstDescriptor, secondDescriptor));
+      });
+    });
+    return best;
+  }
+
   function matchFeatures(templateFeatures, imageFeatures) {
     var proposed = [];
     templateFeatures.keypoints.forEach(function (templatePoint) {
       var best = null;
       var second = null;
       imageFeatures.keypoints.forEach(function (imagePoint) {
-        var distance = descriptorDistance(templatePoint.descriptor, imagePoint.descriptor);
+        var distance = keypointDescriptorDistance(templatePoint, imagePoint);
         if (!best || distance < best.distance) {
           second = best;
           best = { image: imagePoint, distance: distance };
@@ -403,7 +419,7 @@
     imageFeatures.keypoints.forEach(function (imagePoint) {
       var best = null;
       templateFeatures.keypoints.forEach(function (templatePoint) {
-        var distance = descriptorDistance(templatePoint.descriptor, imagePoint.descriptor);
+        var distance = keypointDescriptorDistance(templatePoint, imagePoint);
         if (!best || distance < best.distance) best = { template: templatePoint, distance: distance };
       });
       if (best) reverseBest.set(imagePoint, best.template);
@@ -706,7 +722,9 @@
       if (!state.imageFile || !state.templateFile) throw new Error("upload both an image and a template");
       var uploadedImage = await loadImage(state.imageFile);
       var uploadedTemplate = await loadImage(state.templateFile);
-      return { image: rasterizeImage(uploadedImage, 512), template: rasterizeImage(uploadedTemplate, 384, 64), kind: "uploaded", label: "Uploaded image and template" };
+      var imageRaster = rasterizeImage(uploadedImage, 512);
+      var templateRaster = rasterizeImage(uploadedTemplate, 384, 48, imageRaster.scale);
+      return { image: imageRaster, template: templateRaster, kind: "uploaded", label: "Uploaded image and template at a shared pixel scale" };
     }
     var templateImage = await loadImage(templateSource);
     var template = rasterizeImage(templateImage, 96);
@@ -754,7 +772,7 @@
       status.textContent = pair.kind === "transform" ? "Educational SIFT-style transform demo: the template is inserted into the image at the selected scale and rotation." : (matchInfo.verified ? pair.label + ". Only matches that agree with one affine geometric transform are shown in green." : pair.label + ". No strong affine consensus was found; amber lines are tentative descriptor matches.");
       var templateAspect = pair.template.sourceWidth && pair.template.sourceHeight ? pair.template.sourceWidth / pair.template.sourceHeight : 0;
       var cropTip = pair.kind === "uploaded" && (Math.min(pair.template.sourceWidth, pair.template.sourceHeight) < 50 || templateAspect > 5) ? " Tip: this template is very thin; include more surrounding texture and at least about 50 pixels in its short dimension." : "";
-      resultText.textContent = "Image keypoints: " + imageFeatures.keypoints.length + " · Template keypoints: " + templateFeatures.keypoints.length + " · Descriptor candidates: " + matchInfo.candidates + " · Displayed matches: " + matches.length + (matchInfo.verified ? " verified." : " tentative.") + cropTip;
+      resultText.textContent = "Image keypoints: " + imageFeatures.keypoints.length + " · Template keypoints: " + templateFeatures.keypoints.length + " · Descriptor candidates: " + matchInfo.candidates + " · Displayed matches: " + matches.length + (matchInfo.verified ? " verified." : " tentative.") + (pair.kind === "uploaded" ? " Uploaded crop processed at the search-image pixel scale." : "") + cropTip;
     } catch (error) {
       status.textContent = "SIFT explorer could not run: " + error.message + ".";
       resultText.textContent = "Use the transform demo or upload both an image and a template.";
