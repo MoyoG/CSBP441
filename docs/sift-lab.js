@@ -429,6 +429,103 @@
     return (strict.length >= 3 ? strict : mutual.slice(0, Math.min(6, mutual.length))).slice(0, 32);
   }
 
+  function sampledSignature(matrix, sampleWidth, sampleHeight) {
+    var values = [];
+    for (var row = 0; row < sampleHeight; row += 1) {
+      for (var column = 0; column < sampleWidth; column += 1) {
+        var x = clamp(Math.round((column + 0.5) * matrix[0].length / sampleWidth - 0.5), 0, matrix[0].length - 1);
+        var y = clamp(Math.round((row + 0.5) * matrix.length / sampleHeight - 0.5), 0, matrix.length - 1);
+        values.push(matrix[y][x]);
+      }
+    }
+    var mean = values.reduce(function (sum, value) { return sum + value; }, 0) / values.length;
+    var centered = values.map(function (value) { return value - mean; });
+    var energy = Math.sqrt(centered.reduce(function (sum, value) { return sum + value * value; }, 0)) || 1;
+    return { values: centered, energy: energy, width: sampleWidth, height: sampleHeight };
+  }
+
+  function patchCorrelation(matrix, left, top, width, height, signature) {
+    var values = [];
+    for (var row = 0; row < signature.height; row += 1) {
+      for (var column = 0; column < signature.width; column += 1) {
+        var x = clamp(Math.round(left + (column + 0.5) * width / signature.width - 0.5), 0, matrix[0].length - 1);
+        var y = clamp(Math.round(top + (row + 0.5) * height / signature.height - 0.5), 0, matrix.length - 1);
+        values.push(matrix[y][x]);
+      }
+    }
+    var mean = values.reduce(function (sum, value) { return sum + value; }, 0) / values.length;
+    var centered = values.map(function (value) { return value - mean; });
+    var energy = Math.sqrt(centered.reduce(function (sum, value) { return sum + value * value; }, 0)) || 1;
+    var dot = centered.reduce(function (sum, value, index) { return sum + value * signature.values[index]; }, 0);
+    return dot / (energy * signature.energy);
+  }
+
+  function estimateTemplateAlignment(pair) {
+    var image = pair.image.matrix;
+    var template = pair.template.matrix;
+    var imageWidth = image[0].length;
+    var imageHeight = image.length;
+    var templateWidth = template[0].length;
+    var templateHeight = template.length;
+    var maximumScale = Math.min(1.35, (imageWidth - 8) / templateWidth, (imageHeight - 8) / templateHeight);
+    var minimumScale = 0.25;
+    if (maximumScale < minimumScale) return null;
+    var signature = sampledSignature(template, 20, 30);
+    var best = null;
+    for (var scale = minimumScale; scale <= maximumScale + 0.001; scale += 0.08) {
+      var patchWidth = Math.max(12, Math.round(templateWidth * scale));
+      var patchHeight = Math.max(12, Math.round(templateHeight * scale));
+      if (patchWidth >= imageWidth || patchHeight >= imageHeight) continue;
+      var stride = Math.max(3, Math.round(Math.min(patchWidth, patchHeight) / 22));
+      for (var top = 0; top <= imageHeight - patchHeight; top += stride) {
+        for (var left = 0; left <= imageWidth - patchWidth; left += stride) {
+          var score = patchCorrelation(image, left, top, patchWidth, patchHeight, signature);
+          if (!best || score > best.score) best = { left: left, top: top, scale: scale, width: patchWidth, height: patchHeight, score: score };
+        }
+      }
+    }
+    if (!best) return null;
+    var refineMinimum = Math.max(minimumScale, best.scale - 0.09);
+    var refineMaximum = Math.min(maximumScale, best.scale + 0.09);
+    for (var refinedScale = refineMinimum; refinedScale <= refineMaximum + 0.001; refinedScale += 0.02) {
+      var refinedWidth = Math.max(12, Math.round(templateWidth * refinedScale));
+      var refinedHeight = Math.max(12, Math.round(templateHeight * refinedScale));
+      var leftStart = Math.max(0, best.left - 8);
+      var topStart = Math.max(0, best.top - 8);
+      var leftEnd = Math.min(imageWidth - refinedWidth, best.left + 8);
+      var topEnd = Math.min(imageHeight - refinedHeight, best.top + 8);
+      for (var refinedTop = topStart; refinedTop <= topEnd; refinedTop += 1) {
+        for (var refinedLeft = leftStart; refinedLeft <= leftEnd; refinedLeft += 1) {
+          var refinedScore = patchCorrelation(image, refinedLeft, refinedTop, refinedWidth, refinedHeight, signature);
+          if (refinedScore > best.score) best = { left: refinedLeft, top: refinedTop, scale: refinedScale, width: refinedWidth, height: refinedHeight, score: refinedScore };
+        }
+      }
+    }
+    return best;
+  }
+
+  function alignmentMatches(templateFeatures, imageFeatures, alignment) {
+    var usedImagePoints = new Set();
+    var matches = [];
+    templateFeatures.keypoints.slice().sort(function (a, b) { return b.score - a.score; }).forEach(function (templatePoint) {
+      if (matches.length >= 24) return;
+      var expectedX = alignment.left + templatePoint.x * alignment.scale;
+      var expectedY = alignment.top + templatePoint.y * alignment.scale;
+      var tolerance = Math.max(4.5, Math.min(12, templatePoint.scale * alignment.scale * 2.5 + 2));
+      var nearest = null;
+      imageFeatures.keypoints.forEach(function (imagePoint) {
+        if (usedImagePoints.has(imagePoint)) return;
+        var distance = Math.hypot(imagePoint.x - expectedX, imagePoint.y - expectedY);
+        if (distance <= tolerance && (!nearest || distance < nearest.distance)) nearest = { point: imagePoint, distance: distance };
+      });
+      if (nearest) {
+        usedImagePoints.add(nearest.point);
+        matches.push({ template: templatePoint, image: nearest.point, distance: nearest.distance, ratio: 0, verified: true, alignment: true });
+      }
+    });
+    return matches;
+  }
+
   function solveLinearSystem(matrix, rightSide) {
     var augmented = matrix.map(function (row, index) { return row.slice().concat([rightSide[index]]); });
     for (var column = 0; column < rightSide.length; column += 1) {
@@ -753,7 +850,20 @@
       if (request !== state.request) return;
       var templateFeatures = detectAndDescribe(pair.template.matrix);
       var imageFeatures = detectAndDescribe(pair.image.matrix);
-      var matchInfo = pair.kind === "transform" ? { matches: transformMatches(templateFeatures, pair), candidates: templateFeatures.keypoints.length, verified: true } : verifyGeometry(matchFeatures(templateFeatures, imageFeatures), pair);
+      var descriptorCandidates = pair.kind === "transform" ? [] : matchFeatures(templateFeatures, imageFeatures);
+      var matchInfo;
+      if (pair.kind === "transform") {
+        matchInfo = { matches: transformMatches(templateFeatures, pair), candidates: templateFeatures.keypoints.length, verified: true };
+      } else {
+        matchInfo = verifyGeometry(descriptorCandidates, pair);
+        if (pair.kind === "uploaded") {
+          var alignment = estimateTemplateAlignment(pair);
+          var alignedMatches = alignment ? alignmentMatches(templateFeatures, imageFeatures, alignment) : [];
+          if (alignment && alignment.score > 0.42 && alignedMatches.length >= 4) {
+            matchInfo = { matches: alignedMatches, candidates: descriptorCandidates.length, verified: true, aligned: true, alignment: alignment };
+          }
+        }
+      }
       var matches = matchInfo.matches;
       var templatePoint = matches.length ? matches[0].template : templateFeatures.keypoints[0];
       if (request !== state.request) return;
@@ -769,10 +879,11 @@
         descriptorCanvas.getContext("2d").clearRect(0, 0, descriptorCanvas.width, descriptorCanvas.height);
       }
       drawMatchesCanvas(matchCanvas, pair, imageFeatures, templateFeatures, matches);
-      status.textContent = pair.kind === "transform" ? "Educational SIFT-style transform demo: the template is inserted into the image at the selected scale and rotation." : (matchInfo.verified ? pair.label + ". Only matches that agree with one affine geometric transform are shown in green." : pair.label + ". No strong affine consensus was found; amber lines are tentative descriptor matches.");
+      status.textContent = pair.kind === "transform" ? "Educational SIFT-style transform demo: the template is inserted into the image at the selected scale and rotation." : (matchInfo.aligned ? pair.label + ". A multi-scale crop alignment guides the green SIFT keypoint correspondences; use the transform demo to explore rotation." : (matchInfo.verified ? pair.label + ". Only matches that agree with one affine geometric transform are shown in green." : pair.label + ". No strong affine consensus was found; amber lines are tentative descriptor matches."));
       var templateAspect = pair.template.sourceWidth && pair.template.sourceHeight ? pair.template.sourceWidth / pair.template.sourceHeight : 0;
       var cropTip = pair.kind === "uploaded" && (Math.min(pair.template.sourceWidth, pair.template.sourceHeight) < 50 || templateAspect > 5) ? " Tip: this template is very thin; include more surrounding texture and at least about 50 pixels in its short dimension." : "";
-      resultText.textContent = "Image keypoints: " + imageFeatures.keypoints.length + " · Template keypoints: " + templateFeatures.keypoints.length + " · Descriptor candidates: " + matchInfo.candidates + " · Displayed matches: " + matches.length + (matchInfo.verified ? " verified." : " tentative.") + (pair.kind === "uploaded" ? " Uploaded crop processed at the search-image pixel scale." : "") + cropTip;
+      var alignmentNote = matchInfo.aligned ? " Alignment scale: " + matchInfo.alignment.scale.toFixed(2) + "×; normalized correlation: " + matchInfo.alignment.score.toFixed(2) + "." : "";
+      resultText.textContent = "Image keypoints: " + imageFeatures.keypoints.length + " · Template keypoints: " + templateFeatures.keypoints.length + " · Descriptor candidates: " + matchInfo.candidates + " · Displayed matches: " + matches.length + (matchInfo.verified ? " verified." : " tentative.") + (pair.kind === "uploaded" ? " Uploaded crop processed at the search-image pixel scale." : "") + alignmentNote + cropTip;
     } catch (error) {
       status.textContent = "SIFT explorer could not run: " + error.message + ".";
       resultText.textContent = "Use the transform demo or upload both an image and a template.";
