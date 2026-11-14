@@ -706,7 +706,7 @@
       if (!state.imageFile || !state.templateFile) throw new Error("upload both an image and a template");
       var uploadedImage = await loadImage(state.imageFile);
       var uploadedTemplate = await loadImage(state.templateFile);
-      return { image: rasterizeImage(uploadedImage, 256), template: rasterizeImage(uploadedTemplate, 384, 64), kind: "uploaded", label: "Uploaded image and template" };
+      return { image: rasterizeImage(uploadedImage, 512), template: rasterizeImage(uploadedTemplate, 384, 64), kind: "uploaded", label: "Uploaded image and template" };
     }
     var templateImage = await loadImage(templateSource);
     var template = rasterizeImage(templateImage, 96);
