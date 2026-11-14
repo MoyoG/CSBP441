@@ -29,6 +29,11 @@
     url: "https://huggingface.co/unileon-robotics/YOLO11-ONNX/resolve/main/dynamic/yolo11n-seg.onnx",
     inputSize: 640
   };
+  var SEGMENT_RESOLUTIONS = [
+    { value: 416, label: "416×416 · Fast" },
+    { value: 640, label: "640×640 · Balanced" },
+    { value: 960, label: "960×960 · Higher detail" }
+  ];
   var stageInfo = [
     ["input", "Input image", "RGB image enters the network."],
     ["encoder", "Encoder detail", "Local contrast and edges are retained while the grid contracts."],
@@ -69,6 +74,12 @@
       "<p class='unet-explorer-note'><strong>Teaching note:</strong> this is a deterministic browser visualization of the U-Net data flow, not a trained segmentation model. It makes the tensor shapes and operations visible; a real U-Net learns the filters and predicts the mask from training data.</p>" +
     "</div>";
 
+  var realControls = host.querySelector(".unet-real-controls");
+  var resolutionField = document.createElement("label");
+  resolutionField.className = "unet-field";
+  resolutionField.innerHTML = "<span>Inference resolution</span><select id='unet-real-resolution'>" + SEGMENT_RESOLUTIONS.map(function (option) { return "<option value='" + option.value + "'" + (option.value === SEGMENT_MODEL.inputSize ? " selected" : "") + ">" + option.label + "</option>"; }).join("") + "</select><small>Higher resolution can help small objects but uses more time and memory.</small>";
+  realControls.insertBefore(resolutionField, realControls.firstElementChild);
+
   var presetSelect = host.querySelector("#unet-preset");
   var fileInput = host.querySelector("#unet-image-file");
   var runButton = host.querySelector("#unet-run");
@@ -83,6 +94,7 @@
   var resultSummary = host.querySelector("#unet-result-summary");
   var realRunButton = host.querySelector("#unet-run-coco");
   var realCancelButton = host.querySelector("#unet-cancel-coco");
+  var realResolutionInput = host.querySelector("#unet-real-resolution");
   var realConfidenceInput = host.querySelector("#unet-real-confidence");
   var realIouInput = host.querySelector("#unet-real-iou");
   var realStatus = host.querySelector("#unet-real-status");
@@ -434,8 +446,8 @@
     return realState.session;
   }
 
-  function makeSegmentationInput(image, ortApi) {
-    var size = SEGMENT_MODEL.inputSize;
+  function makeSegmentationInput(image, ortApi, inputSize) {
+    var size = inputSize || SEGMENT_MODEL.inputSize;
     var canvas = document.createElement("canvas");
     canvas.width = size;
     canvas.height = size;
@@ -579,7 +591,8 @@
     var protoHeight = protoDims[2];
     var protoWidth = protoDims[3];
     var protoData = prototypeTensor.data;
-    var displayScale = Math.min(640 / meta.originalWidth, 640 / meta.originalHeight, 1);
+    var displayLimit = Math.max(640, meta.inputSize);
+    var displayScale = Math.min(displayLimit / meta.originalWidth, displayLimit / meta.originalHeight, 1);
     var width = Math.max(1, Math.round(meta.originalWidth * displayScale));
     var height = Math.max(1, Math.round(meta.originalHeight * displayScale));
     var shown = detections.slice(0, 12);
@@ -691,8 +704,10 @@
     try {
       realStatus.textContent = "Loading ONNX Runtime Web…";
       var loaded = await getSegmentationSession(controller.signal);
-      realStatus.textContent = "Preparing the 640×640 input…";
-      var input = makeSegmentationInput(state.image, loaded.ort);
+      var requestedResolution = Number(realResolutionInput.value) || SEGMENT_MODEL.inputSize;
+      var allowedResolution = SEGMENT_RESOLUTIONS.some(function (option) { return option.value === requestedResolution; }) ? requestedResolution : SEGMENT_MODEL.inputSize;
+      var input = makeSegmentationInput(state.image, loaded.ort, allowedResolution);
+      realStatus.textContent = "Preparing the " + input.meta.inputSize + "×" + input.meta.inputSize + " input…";
       realStatus.textContent = "Running a real COCO forward pass in the browser…";
       var inputName = loaded.session.inputNames[0] || "images";
       var outputs = await loaded.session.run((function () { var values = {}; values[inputName] = input.tensor; return values; })());
@@ -702,7 +717,7 @@
       var rendered = renderInstanceMasks(state.image, nms, proto, input.meta);
       rendered.masks.forEach(function (item) { item.detection.maskArea = item.mask.reduce(function (sum, value) { return sum + value; }, 0); });
       drawRealResult(state.image, rendered, nms);
-      realSummary.innerHTML = "<strong>Real model complete:</strong> " + decoded.rawCount.toLocaleString() + " raw candidates → " + decoded.candidates.length + " above confidence threshold → " + nms.length + " final instance masks after class-specific NMS. The table shows the top 20 results.";
+      realSummary.innerHTML = "<strong>Real model complete at " + input.meta.inputSize + "×" + input.meta.inputSize + ":</strong> " + decoded.rawCount.toLocaleString() + " raw candidates → " + decoded.candidates.length + " above confidence threshold → " + nms.length + " final instance masks after class-specific NMS. The table shows the top 20 results.";
       realTable.innerHTML = realTableHTML(nms);
       realStatus.textContent = "Done. YOLO11n-seg processed the image locally with COCO classes.";
       if (input.tensor && input.tensor.dispose) input.tensor.dispose();
