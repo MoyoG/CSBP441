@@ -100,7 +100,8 @@
   function rasterizeImage(image, maxDimension, minimumDimension, sharedScale) {
     var naturalWidth = image.naturalWidth || image.width;
     var naturalHeight = image.naturalHeight || image.height;
-    var scale = sharedScale ? Math.min(1, sharedScale, maxDimension / Math.max(naturalWidth, naturalHeight)) : Math.min(1, maxDimension / Math.max(naturalWidth, naturalHeight));
+    var scale = sharedScale ? Math.min(1, sharedScale) : 1;
+    if (maxDimension) scale = Math.min(scale, maxDimension / Math.max(naturalWidth, naturalHeight));
     if (minimumDimension) scale = Math.max(scale, minimumDimension / Math.min(naturalWidth, naturalHeight));
     var width = Math.max(1, Math.round(naturalWidth * scale));
     var height = Math.max(1, Math.round(naturalHeight * scale));
@@ -819,9 +820,9 @@
       if (!state.imageFile || !state.templateFile) throw new Error("upload both an image and a template");
       var uploadedImage = await loadImage(state.imageFile);
       var uploadedTemplate = await loadImage(state.templateFile);
-      var imageRaster = rasterizeImage(uploadedImage, 512);
-      var templateRaster = rasterizeImage(uploadedTemplate, 384, 48, imageRaster.scale);
-      return { image: imageRaster, template: templateRaster, kind: "uploaded", label: "Uploaded image and template at a shared pixel scale" };
+      var imageRaster = rasterizeImage(uploadedImage, null);
+      var templateRaster = rasterizeImage(uploadedTemplate, null, null, imageRaster.scale);
+      return { image: imageRaster, template: templateRaster, kind: "uploaded", label: "Uploaded image and template at original resolution" };
     }
     var templateImage = await loadImage(templateSource);
     var template = rasterizeImage(templateImage, 96);
@@ -883,7 +884,7 @@
       var templateAspect = pair.template.sourceWidth && pair.template.sourceHeight ? pair.template.sourceWidth / pair.template.sourceHeight : 0;
       var cropTip = pair.kind === "uploaded" && (Math.min(pair.template.sourceWidth, pair.template.sourceHeight) < 50 || templateAspect > 5) ? " Tip: this template is very thin; include more surrounding texture and at least about 50 pixels in its short dimension." : "";
       var alignmentNote = matchInfo.aligned ? " Alignment scale: " + matchInfo.alignment.scale.toFixed(2) + "×; normalized correlation: " + matchInfo.alignment.score.toFixed(2) + "." : "";
-      resultText.textContent = "Image keypoints: " + imageFeatures.keypoints.length + " · Template keypoints: " + templateFeatures.keypoints.length + " · Descriptor candidates: " + matchInfo.candidates + " · Displayed matches: " + matches.length + (matchInfo.verified ? " verified." : " tentative.") + (pair.kind === "uploaded" ? " Uploaded crop processed at the search-image pixel scale." : "") + alignmentNote + cropTip;
+      resultText.textContent = "Image keypoints: " + imageFeatures.keypoints.length + " · Template keypoints: " + templateFeatures.keypoints.length + " · Descriptor candidates: " + matchInfo.candidates + " · Displayed matches: " + matches.length + (matchInfo.verified ? " verified." : " tentative.") + (pair.kind === "uploaded" ? " Uploaded images processed at original resolution." : "") + alignmentNote + cropTip;
     } catch (error) {
       status.textContent = "SIFT explorer could not run: " + error.message + ".";
       resultText.textContent = "Use the transform demo or upload both an image and a template.";
