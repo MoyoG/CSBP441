@@ -585,6 +585,16 @@
     return [Math.round(hueToRgb(h + 1 / 3) * 255), Math.round(hueToRgb(h) * 255), Math.round(hueToRgb(h - 1 / 3) * 255)];
   }
 
+  function getInstanceColor(detection, index, detections) {
+    var classInstance = 0;
+    for (var i = 0; i < index; i++) if (detections[i].classId === detection.classId) classInstance += 1;
+    return hslToRgb((detection.classId * 47 + classInstance * 137) % 360);
+  }
+
+  function rgbCss(color) {
+    return "rgb(" + color.join(",") + ")";
+  }
+
   function renderInstanceMasks(image, detections, prototypeTensor, meta) {
     var protoDims = prototypeTensor.dims.map(Number);
     var maskCount = protoDims[1];
@@ -596,7 +606,8 @@
     var width = Math.max(1, Math.round(meta.originalWidth * displayScale));
     var height = Math.max(1, Math.round(meta.originalHeight * displayScale));
     var shown = detections.slice(0, 12);
-    var masks = shown.map(function (detection) {
+    var masks = shown.map(function (detection, index) {
+      var color = getInstanceColor(detection, index, shown);
       var mask = new Uint8Array(width * height);
       var left = Math.max(0, Math.floor(detection.box[0] * displayScale));
       var right = Math.min(width, Math.ceil(detection.box[2] * displayScale));
@@ -615,7 +626,7 @@
           if (sigmoid(total) >= .5) mask[y * width + x] = 1;
         }
       }
-      return { detection: detection, mask: mask, color: hslToRgb(detection.classId * 47) };
+      return { detection: detection, mask: mask, color: color };
     });
     var maskImage = new ImageData(width, height);
     var overlayImage = new ImageData(width, height);
@@ -651,8 +662,9 @@
     var overlayContext = realOverlay.getContext("2d");
     overlayContext.putImageData(rendered.overlayImage, 0, 0);
     var scale = rendered.width / (image.naturalWidth || image.width);
-    detections.slice(0, 12).forEach(function (detection) {
-      var color = "hsl(" + ((detection.classId * 47) % 360) + " 78% 45%)";
+    var shown = detections.slice(0, 12);
+    shown.forEach(function (detection, index) {
+      var color = rgbCss(getInstanceColor(detection, index, shown));
       var x = detection.box[0] * scale, y = detection.box[1] * scale, w = (detection.box[2] - detection.box[0]) * scale, h = (detection.box[3] - detection.box[1]) * scale;
       overlayContext.strokeStyle = color;
       overlayContext.lineWidth = 2;
