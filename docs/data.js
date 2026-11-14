@@ -784,6 +784,78 @@ window.COURSE_DATA = {
       {q:"YOLOv1 assigns an object to the grid cell containing its center.",answer:true,why:"The center determines the responsible cell even when the object spans multiple cells."}
     ],
     problemTypes: []
+  },
+  13: {
+    short: "U-Net",
+    title: "U-Net Image Segmentation",
+    summary: "Understand how an encoder–decoder network combines deep context with high-resolution skip features to produce a class decision for every pixel.",
+    image: "assets/ln13-unet.png",
+    objectives: [
+      "Distinguish semantic segmentation from image classification and object detection.",
+      "Trace spatial dimensions and channel counts through a U-Net encoder and decoder.",
+      "Explain how max pooling, up-convolution, cropping, and concatenation change feature maps.",
+      "Calculate multi-channel convolution after a skip connection and a final 1×1 convolution.",
+      "Convert per-pixel logits to probabilities and evaluate a weighted segmentation loss."
+    ],
+    concepts: [
+      ["Pixel-level prediction", "Segmentation assigns a class to each pixel. The output is a dense mask rather than one label for the entire image or one box per object."],
+      ["U-shaped encoder–decoder", "The encoder contracts the spatial grid while learning increasingly contextual features. The decoder expands the grid and reconstructs a dense output."],
+      ["Pooling and context", "2×2 max pooling with stride 2 reduces height and width, increases the effective receptive field, and retains the strongest local response in each window."],
+      ["Up-convolution", "A transposed convolution learns how to project a low-resolution feature map onto a larger grid. Its output is not simply a copied image; the kernel weights are learned."],
+      ["Skip connections", "An encoder map is concatenated with a decoder map at the same spatial size. A following multi-channel convolution learns how to fuse semantic context with fine boundary detail."],
+      ["The 1×1 output convolution", "A 1×1 filter mixes channels at one pixel without mixing neighboring pixels. With K classes it produces K logits at every spatial location."],
+      ["Softmax and weighted loss", "Softmax converts the K logits at each pixel into class probabilities. A spatial weight map can make thin borders or other important pixels contribute more to the loss."]
+    ],
+    handsOn: [
+      ["Contract", "Track two valid 3×3 convolutions and a 2×2 max pool through an encoder block."],
+      ["Expand", "Place scaled kernel blocks to calculate a 2×2 transposed-convolution example."],
+      ["Fuse", "Concatenate decoder and encoder channels, then calculate one multi-channel convolution output."],
+      ["Classify pixels", "Apply a 1×1 convolution, softmax, and weighted cross-entropy at individual pixels."],
+      ["Explore", "Use the browser explorer to see the same data-flow stages on course images or a local upload."]
+    ],
+    recap: "U-Net keeps a contracting path for context and an expanding path for precise localization. Skip connections restore encoder detail, and the final 1×1 convolution turns the fused features into per-pixel class scores.",
+    takeaways: [
+      "Semantic segmentation predicts a class for every pixel.",
+      "The encoder trades spatial resolution for contextual and semantic information.",
+      "A transposed convolution can learn an upsampling operation; overlapping contributions are added.",
+      "Skip connections concatenate encoder detail with decoder context, then a convolution learns their fusion.",
+      "A 1×1 convolution changes the channel meaning at each pixel while preserving the spatial grid.",
+      "Softmax and a weighted pixel loss convert logits into trainable segmentation decisions."
+    ],
+    notebooks: [],
+    problemIntro: "Attempt each U-Net calculation, then reveal the complete worked solution when you are ready.",
+    problemDomain: "unet",
+    unetExplorer: true,
+    problemQuestions: [
+      ["Up-convolution output", "", ""],
+      ["Skip connection: concatenate and fuse", "", ""],
+      ["Final 1×1 convolution", "", ""],
+      ["U-Net spatial-size bookkeeping", "", ""],
+      ["Pixel softmax and weighted loss", "", ""]
+    ],
+    mcqs: [
+      {q:"What is the main output of semantic segmentation?",options:["One label for the whole image","One bounding box per object","A class label for each pixel","Only the image dimensions"],answer:2,why:"Semantic segmentation produces a dense, pixel-level class assignment."},
+      {q:"What happens to height and width after 2×2 max pooling with stride 2?",options:["They usually double","They are approximately halved","They stay unchanged","They become the number of classes"],answer:1,why:"With a 2×2 window and stride 2, one output is produced for each non-overlapping 2×2 input block."},
+      {q:"Why does a U-Net encoder use deeper layers?",options:["To remove all channels","To capture larger-context and more semantic features","To prevent any downsampling","To replace the input image with a label"],answer:1,why:"Downsampling and depth increase context and allow the network to represent semantic structure."},
+      {q:"In the block-placement view of a transposed convolution, what happens when projected kernel blocks overlap?",options:["The overlap is ignored","The overlapping contributions are added","Only the first block is kept","The input is cropped"],answer:1,why:"Transposed convolution accumulates the weighted contributions written to each output location."},
+      {q:"What must be true before an encoder map and decoder map are concatenated?",options:["They must have the same spatial height and width","They must have the same number of channels","They must be identical images","They must have the same kernel weights"],answer:0,why:"Concatenation along the channel axis requires matching spatial dimensions; the channel counts may differ."},
+      {q:"What does the convolution after a skip concatenation learn?",options:["How to fuse decoder context and encoder detail","How to delete the decoder map","How to change a pixel into a bounding box","How to sort class labels"],answer:0,why:"The multi-channel filters combine the two sources into refined decoder features."},
+      {q:"What is special about a 1×1 convolution?",options:["It mixes only neighboring rows","It mixes channels at one pixel without spatial mixing","It always doubles the image size","It can only produce one class"],answer:1,why:"A 1×1 filter sees the channel vector at one spatial position and leaves neighboring positions separate."},
+      {q:"If a feature map is H×W×32 and a 1×1 convolution has 4 output filters, what is the output shape?",options:["1×1×32","H×W×4","32×H×W×4","H/2×W/2×32"],answer:1,why:"The spatial dimensions remain H×W and the number of channels becomes the number of output filters, 4."},
+      {q:"What does softmax produce at one pixel?",options:["A probability distribution over the segmentation classes","A bounding-box IoU","A pooling window","A new image coordinate"],answer:0,why:"Softmax normalizes the per-class logits so the probabilities sum to one at that pixel."},
+      {q:"Why can a U-Net use a spatially weighted loss?",options:["To make selected pixels, such as borders, contribute more strongly","To remove all background pixels from the input","To guarantee zero loss","To change the camera resolution"],answer:0,why:"A weight map can emphasize boundaries or rare/important pixels during training."}
+    ],
+    trueFalse: [
+      {q:"Semantic segmentation predicts one class label for every pixel.",answer:true,why:"That dense output is what distinguishes segmentation from a single image label."},
+      {q:"The encoder path of U-Net usually increases spatial resolution at every stage.",answer:false,why:"The encoder usually downsamples to capture larger context; the decoder restores resolution."},
+      {q:"Max pooling with stride 2 normally reduces height and width by about a factor of two.",answer:true,why:"A 2×2 stride-2 pool samples one output per 2×2 region."},
+      {q:"A transposed convolution is always identical to nearest-neighbor interpolation.",answer:false,why:"It is a learned operation whose kernel can combine and distribute input activations."},
+      {q:"Skip concatenation requires the encoder and decoder maps to agree spatially.",answer:true,why:"Height and width must match when concatenating along channels."},
+      {q:"A 1×1 convolution can mix channels while preserving the spatial dimensions.",answer:true,why:"The filter spans the channel axis at one pixel but has no spatial extent beyond that pixel."},
+      {q:"Softmax probabilities at one pixel should sum to approximately one.",answer:true,why:"The normalization denominator makes the class probabilities sum to one."},
+      {q:"A weighted pixel loss gives every pixel exactly the same contribution.",answer:false,why:"The weight map is used precisely to vary how strongly different pixels contribute."}
+    ],
+    problemTypes: []
   }
 };
 
