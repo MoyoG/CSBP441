@@ -97,17 +97,18 @@
     });
   }
 
-  function rasterizeImage(image, maxDimension) {
+  function rasterizeImage(image, maxDimension, minimumDimension) {
     var naturalWidth = image.naturalWidth || image.width;
     var naturalHeight = image.naturalHeight || image.height;
     var scale = Math.min(1, maxDimension / Math.max(naturalWidth, naturalHeight));
+    if (minimumDimension) scale = Math.max(scale, minimumDimension / Math.min(naturalWidth, naturalHeight));
     var width = Math.max(1, Math.round(naturalWidth * scale));
     var height = Math.max(1, Math.round(naturalHeight * scale));
     var canvas = document.createElement("canvas");
     canvas.width = width;
     canvas.height = height;
     canvas.getContext("2d").drawImage(image, 0, 0, width, height);
-    return { canvas: canvas, matrix: grayscaleMatrix(canvas), width: width, height: height, scale: scale };
+    return { canvas: canvas, matrix: grayscaleMatrix(canvas), width: width, height: height, scale: scale, sourceWidth: naturalWidth, sourceHeight: naturalHeight };
   }
 
   function matrixCanvas(matrix) {
@@ -705,7 +706,7 @@
       if (!state.imageFile || !state.templateFile) throw new Error("upload both an image and a template");
       var uploadedImage = await loadImage(state.imageFile);
       var uploadedTemplate = await loadImage(state.templateFile);
-      return { image: rasterizeImage(uploadedImage, 256), template: rasterizeImage(uploadedTemplate, 128), kind: "uploaded", label: "Uploaded image and template" };
+      return { image: rasterizeImage(uploadedImage, 256), template: rasterizeImage(uploadedTemplate, 384, 64), kind: "uploaded", label: "Uploaded image and template" };
     }
     var templateImage = await loadImage(templateSource);
     var template = rasterizeImage(templateImage, 96);
@@ -751,7 +752,9 @@
       }
       drawMatchesCanvas(matchCanvas, pair, imageFeatures, templateFeatures, matches);
       status.textContent = pair.kind === "transform" ? "Educational SIFT-style transform demo: the template is inserted into the image at the selected scale and rotation." : (matchInfo.verified ? pair.label + ". Only matches that agree with one affine geometric transform are shown in green." : pair.label + ". No strong affine consensus was found; amber lines are tentative descriptor matches.");
-      resultText.textContent = "Image keypoints: " + imageFeatures.keypoints.length + " · Template keypoints: " + templateFeatures.keypoints.length + " · Descriptor candidates: " + matchInfo.candidates + " · Displayed matches: " + matches.length + (matchInfo.verified ? " verified." : " tentative.");
+      var templateAspect = pair.template.sourceWidth && pair.template.sourceHeight ? pair.template.sourceWidth / pair.template.sourceHeight : 0;
+      var cropTip = pair.kind === "uploaded" && (Math.min(pair.template.sourceWidth, pair.template.sourceHeight) < 50 || templateAspect > 5) ? " Tip: this template is very thin; include more surrounding texture and at least about 50 pixels in its short dimension." : "";
+      resultText.textContent = "Image keypoints: " + imageFeatures.keypoints.length + " · Template keypoints: " + templateFeatures.keypoints.length + " · Descriptor candidates: " + matchInfo.candidates + " · Displayed matches: " + matches.length + (matchInfo.verified ? " verified." : " tentative.") + cropTip;
     } catch (error) {
       status.textContent = "SIFT explorer could not run: " + error.message + ".";
       resultText.textContent = "Use the transform demo or upload both an image and a template.";
