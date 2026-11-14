@@ -31,7 +31,7 @@
       <aside class="lecture-sidebar">
         <a class="back-link" href="index.html">Back to course</a>
         <strong>LN${ln} ${esc(data.short)}</strong>
-        <nav><a href="#overview">Overview</a><a href="#concepts">Key concepts</a><a href="#hands-on">Hands-on</a>${data.materials ? `<a href="#materials">In-class lab</a>` : ""}${data.yoloDetectorLab ? `<a href="#real-detection">Real YOLO detection</a>` : ""}<a href="#notebooks">Colab notebooks</a><a href="#knowledge-check">Interactive MCQs</a><a href="#true-false">True or False</a><a href="#problem-lab">Problem generator</a>${data.takeaways ? `<a href="#takeaways">Summary and takeaways</a>` : ""}</nav>
+        <nav><a href="#overview">Overview</a><a href="#concepts">Key concepts</a><a href="#hands-on">Hands-on</a>${data.materials ? `<a href="#materials">In-class lab</a>` : ""}${data.yoloDetectorLab ? `<a href="#real-detection">Real YOLO detection</a>` : ""}${data.siftTemplateExplorer ? `<a href="#template-matching-explorer">SSD explorer</a>` : ""}<a href="#notebooks">Colab notebooks</a><a href="#knowledge-check">Interactive MCQs</a><a href="#true-false">True or False</a><a href="#problem-lab">Problem generator</a>${data.takeaways ? `<a href="#takeaways">Summary and takeaways</a>` : ""}</nav>
       </aside>
       <main class="lecture-content">
         <section class="lecture-hero" id="overview">
@@ -49,6 +49,7 @@
           <section class="lecture-section" id="notebooks"><p class="eyebrow">Colab</p><h2>Run the notebooks</h2><div class="notebook-list">${data.notebooks.map(x=>`<div class="notebook-item"><div><strong>${esc(x[0])}</strong><p>${esc(x[1])}</p></div><div class="button-row"><a class="button button-primary" target="_blank" rel="noopener" href="${notebookUrl(x[2])}">Open in Colab</a><a class="button button-secondary" href="notebooks/${encodeURIComponent(x[2])}">Download</a></div></div>`).join("")}</div></section>
           <section class="lecture-section" id="knowledge-check"><p class="eyebrow">Self-check</p><h2>Interactive MCQs</h2><p>Answer all ${data.mcqs.length} multiple-choice questions for this lecture note. Feedback explains the best answer after every question.</p><div id="quiz"></div></section>
           <section class="lecture-section" id="true-false"><p class="eyebrow">Concept check</p><h2>Interactive True or False</h2><p>Answer all ${(data.trueFalse || []).length} statements for this lecture note. Feedback explains why each statement is true or false.</p><div id="true-false-quiz"></div></section>
+          ${data.siftTemplateExplorer ? `<section class="lecture-section" id="template-matching-explorer"><p class="eyebrow">Interactive explorer</p><h2>SSD template matching</h2><p>Choose the supplied car example or upload your own search image and template. Change the scan resolution to see how the SSD map and best match change.</p><div id="sift-template-explorer"></div></section>` : ""}
           <section class="lecture-section" id="problem-lab"><p class="eyebrow">Exam practice</p><h2>${data.problemQuestions ? "Interactive problem solving" : "Parameterized problem generator"}</h2><p>${data.problemQuestions ? esc(data.problemIntro || `Attempt each ${data.title} problem, then reveal the complete worked solution when you are ready.`) : "A seed creates reproducible starting values. Edit the displayed inputs, then recalculate the worked solution."}</p>${data.problemBankLink ? `<p><a class="button button-secondary" href="${esc(data.problemBankLink)}">Open the 20-question LN6 problem bank</a></p>` : ""}<div id="generator"></div><div id="problem-questions"></div></section>
           ${data.takeaways ? `<section class="lecture-section" id="takeaways"><p class="eyebrow">LN${ln} recap</p><h2>Summary and takeaways</h2><p class="takeaway-summary">${esc(data.recap || data.summary)}</p><ol class="takeaway-list">${data.takeaways.map(item=>`<li>${esc(item)}</li>`).join("")}</ol></section>` : ""}
         </div>
@@ -840,6 +841,16 @@
     host.querySelector("#new-seed").addEventListener("click", ()=>{ host.querySelector("#problem-seed").value=String(Math.floor(Math.random()*9000000)+1000000); generate(); });
     host.querySelector("#copy-link").addEventListener("click", copyLink);
     generate();
+    if(data.siftTemplateExplorer) initStandaloneSiftExplorer();
+
+    function initStandaloneSiftExplorer(){
+      const explorerHost=document.getElementById("sift-template-explorer");
+      if(!explorerHost)return;
+      const explorerSeed=new URLSearchParams(location.search).get("seed")||"explorer";
+      const explorerProblem=generateProblem(ln,"sift-template",randomFactory(`${ln}:sift-explorer:${explorerSeed}`));
+      explorerHost.innerHTML=explorerProblem.editor.labMarkup||"";
+      bindSiftTemplateEditor(explorerProblem.editor,explorerHost);
+    }
 
     function generate() {
       const type = host.querySelector("#problem-type").value;
@@ -859,19 +870,20 @@
       const sectionHash=location.hash || "#problem-lab";
       history.replaceState(null,"",`${location.pathname}?${query}${sectionHash}`);
       const bankEditor = problem.editor?.kind==="bank" ? bankEditorHTML(problem.editor) : problem.editor?.kind==="logic" ? logicEditorHTML(problem.editor) : "";
-      host.querySelector("#problem").innerHTML = `<div class="problem-meta"><span>LN${ln}</span><span>Seed ${esc(seed)}</span><span>${esc(problem.level)}</span></div><h3>${esc(problem.title)}</h3><div class="problem-body"><div class="dynamic-question">${problem.question}</div>${bankEditor}</div><div class="solution" hidden><h4>Worked solution</h4>${problem.solution}</div>`;
+      const problemQuestion=problem.editor?.kind==="sift-template"&&!data.siftTemplateExplorer?`${problem.editor.labMarkup||""}${problem.question}`:problem.question;
+      host.querySelector("#problem").innerHTML = `<div class="problem-meta"><span>LN${ln}</span><span>Seed ${esc(seed)}</span><span>${esc(problem.level)}</span></div><h3>${esc(problem.title)}</h3><div class="problem-body"><div class="dynamic-question">${problemQuestion}</div>${bankEditor}</div><div class="solution" hidden><h4>Worked solution</h4>${problem.solution}</div>`;
       host.querySelector("#toggle-solution").textContent = "Show solution";
       host.querySelector("#copy-note").textContent = "";
       if (problem.editor?.kind==="filter") bindFilterEditor(problem.editor);
       if (problem.editor?.kind==="bank") bindBankEditor(problem.editor);
       if (problem.editor?.kind==="logic") bindLogicEditor(problem.editor, host);
-      if (problem.editor?.kind==="sift-template") bindSiftTemplateEditor(problem.editor);
+      if (problem.editor?.kind==="sift-template"&&!data.siftTemplateExplorer) bindSiftTemplateEditor(problem.editor);
     }
-    function bindSiftTemplateEditor(editor) {
-      const imageCanvas=host.querySelector("#sift-template-image"), templateCanvas=host.querySelector("#sift-template-template"), heatmapCanvas=host.querySelector("#sift-template-heatmap");
-      const imageUpload=host.querySelector("#sift-image-upload"), templateUpload=host.querySelector("#sift-template-upload"), presetSelect=host.querySelector("#sift-template-preset"), resolutionSelect=host.querySelector("#sift-template-resolution"), resetButton=host.querySelector("#sift-template-reset");
-      const status=host.querySelector("#sift-template-status"), bestOutput=host.querySelector("#sift-template-best");
-      const state={image:editor.image,template:editor.template,candidateLocations:editor.candidateLocations,source:"Generated example",presetId:"generated",searchScale:null,imageFile:null,templateFile:null,resolution:64};
+    function bindSiftTemplateEditor(editor,targetHost=host) {
+      const imageCanvas=targetHost.querySelector("#sift-template-image"), templateCanvas=targetHost.querySelector("#sift-template-template"), heatmapCanvas=targetHost.querySelector("#sift-template-heatmap");
+      const imageUpload=targetHost.querySelector("#sift-image-upload"), templateUpload=targetHost.querySelector("#sift-template-upload"), presetSelect=targetHost.querySelector("#sift-template-preset"), resolutionSelect=targetHost.querySelector("#sift-template-resolution"), resetButton=targetHost.querySelector("#sift-template-reset");
+      const status=targetHost.querySelector("#sift-template-status"), bestOutput=targetHost.querySelector("#sift-template-best");
+      const state={image:editor.image,template:editor.template,candidateLocations:editor.candidateLocations,source:"Generated example",presetId:editor.defaultPreset||"generated",searchScale:null,imageFile:null,templateFile:null,resolution:512};
       const canvasSize=320;
       const range=matrix=>{let min=Infinity,max=-Infinity;matrix.forEach(row=>row.forEach(value=>{if(value<min)min=value;if(value>max)max=value;}));return {min,max};};
       const cellGeometry=matrix=>{const rows=matrix.length,cols=matrix[0].length,cell=Math.min(280/Math.max(rows,cols),canvasSize);return {rows,cols,cell,offsetX:(canvasSize-cols*cell)/2,offsetY:(canvasSize-rows*cell)/2};};
@@ -915,8 +927,8 @@
       imageUpload.addEventListener("change",async()=>{if(!imageUpload.files[0])return;try{state.imageFile=imageUpload.files[0];state.presetId="custom";presetSelect.value="custom";await rebuildUploaded();}catch(error){status.textContent=`Upload failed: ${error.message}.`;}});
       templateUpload.addEventListener("change",async()=>{if(!templateUpload.files[0])return;try{state.templateFile=templateUpload.files[0];state.presetId="custom";presetSelect.value="custom";const loaded=await loadFile(state.templateFile,{scale:state.searchScale,maxDimension:Math.max(8,Math.round(state.resolution*.4))});state.template=loaded.matrix;state.candidateLocations=[];state.source=state.searchScale?"Uploaded image and template at a shared pixel scale":"Uploaded template; upload the matching search image to align scales";render();}catch(error){status.textContent=`Upload failed: ${error.message}.`;}});
       resolutionSelect.addEventListener("change",async()=>{state.resolution=Number(resolutionSelect.value);try{if(state.presetId==="custom")await rebuildUploaded();else await applyPreset(state.presetId);}catch(error){status.textContent=`Resolution update failed: ${error.message}.`;}});
-      resetButton.addEventListener("click",async()=>{clearUploads();presetSelect.value="generated";state.resolution=64;resolutionSelect.value="64";await applyPreset("generated");});
-      render();
+      resetButton.addEventListener("click",async()=>{clearUploads();presetSelect.value="generated";state.resolution=512;resolutionSelect.value="512";await applyPreset("generated");});
+      if(state.presetId==="generated")render();else applyPreset(state.presetId);
     }
     function bindBankEditor(editor) {
       host.querySelector("#recalculate-bank").addEventListener("click",()=>{
@@ -1390,18 +1402,19 @@
       const candidateLocations=[{name:"A",row:0,col:0},{name:"B",row:0,col:5},{name:"C",row:5,col:2}];
       const paste=(target,patch,location)=>patch.forEach((row,r)=>row.forEach((value,c)=>{target[location.row+r][location.col+c]=value;}));
       paste(image,patchA,candidateLocations[0]); paste(image,patchB,candidateLocations[1]); paste(image,patchC,candidateLocations[2]);
-      const presets=[{id:"generated",label:"Generated 8×8 example"},{id:"car-front",label:"Car diagram + front template",imageUrl:"assets/sift-car-scene.png",templateUrl:"assets/sift-car-front.png"},{id:"car-rear",label:"Car diagram + rear template",imageUrl:"assets/sift-car-scene.png",templateUrl:"assets/sift-car-rear.png"},{id:"custom",label:"Custom uploaded files"}];
+      const presets=[{id:"generated",label:"Generated 8×8 example"},{id:"car-front",label:"Car diagram + front template",imageUrl:"assets/sift-car-scene.png",templateUrl:"assets/sift-car-front.png"},{id:"car-rear",label:"Car diagram + rear template",imageUrl:"assets/sift-car-scene.png",templateUrl:"assets/sift-car-rear.png"},{id:"custom",label:"Custom uploaded files"}],defaultPreset="car-front";
       const render=v=>{
         const candidates=[["A",v.patchA],["B",v.patchB],["C",v.patchC]];
         const scores=candidates.map(([name,patch])=>({name,score:matrixSSD(v.template,patch)}));
         const best=scores.reduce((a,b)=>b.score<a.score?b:a);
         const table=scores.map(item=>`<tr><td>${item.name}</td><td>${item.score}</td><td>${item.name===best.name?"Best match":""}</td></tr>`).join("");
-        const presetOptions=presets.map(item=>`<option value="${item.id}"${item.id==="generated"?" selected":""}>${item.label}</option>`).join("");
-        const lab=`<section class="sift-template-lab" aria-label="Interactive SSD template matching exploration"><div class="sift-template-upload-row"><label class="sift-template-preset">Example image/template<select id="sift-template-preset">${presetOptions}</select></label><label class="sift-template-upload">Upload search image<input id="sift-image-upload" type="file" accept="image/*"></label><label class="sift-template-upload">Upload template image<input id="sift-template-upload" type="file" accept="image/*"></label><label class="sift-template-resolution">Scan resolution<select id="sift-template-resolution"><option value="32">Low (32 px max)</option><option value="64" selected>Medium (64 px max)</option><option value="128">High (128 px max)</option><option value="256">Very high (256 px max)</option><option value="512">Maximum (512 px max)</option></select></label><button class="button button-secondary" id="sift-template-reset" type="button">Use generated example</button></div><div class="sift-template-visual-grid"><figure><canvas id="sift-template-image" class="sift-template-canvas" role="img" aria-label="Search image visualization"></canvas><figcaption>Search image with candidate regions</figcaption></figure><figure><canvas id="sift-template-template" class="sift-template-canvas" role="img" aria-label="Template image visualization"></canvas><figcaption>Template image</figcaption></figure><figure><canvas id="sift-template-heatmap" class="sift-template-canvas" role="img" aria-label="SSD heatmap"></canvas><figcaption>SSD map: black cells are lower SSD; white cells are higher SSD</figcaption></figure></div><p id="sift-template-status" class="sift-template-status" aria-live="polite"></p><p id="sift-template-best" class="sift-template-best" aria-live="polite"></p></section>`;
-        return {question:`${lab}<p>Use sum of squared differences, <strong>SSD=Σ(t−f)²</strong>, to compare the 3×3 template with each candidate patch. Which candidate is the best match? The visualization scans the full 8×8 search image and highlights the lowest-SSD location.</p><p><strong>Template</strong>${matrixHTML(v.template)}</p><div><strong>Candidate A</strong>${matrixHTML(v.patchA)} <strong>Candidate B</strong>${matrixHTML(v.patchB)} <strong>Candidate C</strong>${matrixHTML(v.patchC)}</div><p>Template matching selects the candidate with the <strong>smallest</strong> SSD. Upload the search image first when the template is a crop from it; the explorer then applies the same scale factor to both files.</p>`,solution:`<table class="results-table"><thead><tr><th>Candidate</th><th>SSD</th><th>Decision</th></tr></thead><tbody>${table}</tbody></table><p>Therefore candidate <strong>${best.name}</strong> is selected because its squared difference is smallest. The live heatmap independently scans every valid top-left position in the search image.</p>`};
+        const presetOptions=presets.map(item=>`<option value="${item.id}"${item.id===defaultPreset?" selected":""}>${item.label}</option>`).join("");
+        const lab=`<section class="sift-template-lab" aria-label="Interactive SSD template matching exploration"><div class="sift-template-upload-row"><label class="sift-template-preset">Example image/template<select id="sift-template-preset">${presetOptions}</select></label><label class="sift-template-upload">Upload search image<input id="sift-image-upload" type="file" accept="image/*"></label><label class="sift-template-upload">Upload template image<input id="sift-template-upload" type="file" accept="image/*"></label><label class="sift-template-resolution">Scan resolution<select id="sift-template-resolution"><option value="32">Low (32 px max)</option><option value="64">Medium (64 px max)</option><option value="128">High (128 px max)</option><option value="256">Very high (256 px max)</option><option value="512" selected>Maximum (512 px max)</option></select></label><button class="button button-secondary" id="sift-template-reset" type="button">Use generated example</button></div><div class="sift-template-visual-grid"><figure><canvas id="sift-template-image" class="sift-template-canvas" role="img" aria-label="Search image visualization"></canvas><figcaption>Search image with candidate regions</figcaption></figure><figure><canvas id="sift-template-template" class="sift-template-canvas" role="img" aria-label="Template image visualization"></canvas><figcaption>Template image</figcaption></figure><figure><canvas id="sift-template-heatmap" class="sift-template-canvas" role="img" aria-label="SSD heatmap"></canvas><figcaption>SSD map: black cells are lower SSD; white cells are higher SSD</figcaption></figure></div><p id="sift-template-status" class="sift-template-status" aria-live="polite"></p><p id="sift-template-best" class="sift-template-best" aria-live="polite"></p></section>`;
+        return {lab,question:`<p>Use sum of squared differences, <strong>SSD=Σ(t−f)²</strong>, to compare the 3×3 template with each candidate patch. Which candidate is the best match?</p><p><strong>Template</strong>${matrixHTML(v.template)}</p><div><strong>Candidate A</strong>${matrixHTML(v.patchA)} <strong>Candidate B</strong>${matrixHTML(v.patchB)} <strong>Candidate C</strong>${matrixHTML(v.patchC)}</div><p>Template matching selects the candidate with the <strong>smallest</strong> SSD. Use the separate SSD explorer above to scan the supplied car example or your own uploaded image and template.</p>`,solution:`<table class="results-table"><thead><tr><th>Candidate</th><th>SSD</th><th>Decision</th></tr></thead><tbody>${table}</tbody></table><p>Therefore candidate <strong>${best.name}</strong> is selected because its squared difference is smallest.</p>`};
       };
       const initial={template,patchA,patchB,patchC};
-      return {level:"Template matching",title:"Choose a template match with SSD",question:render(initial).question,solution:render(initial).solution,editor:{kind:"sift-template",image,template,candidateLocations,presets}};
+      const rendered=render(initial);
+      return {level:"Template matching",title:"Calculate SSD for candidate patches",question:rendered.question,solution:rendered.solution,editor:{kind:"sift-template",image,template,candidateLocations,presets,defaultPreset,labMarkup:rendered.lab}};
     }
 
     if (type === "sift-ncc") {
