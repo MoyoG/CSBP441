@@ -43,6 +43,7 @@
       "</div>" +
       "<div class='unet-step-controls'><label class='unet-field'><span>Highlight one stage</span><select id='unet-stage-select'><option value='all'>Show complete pipeline</option>" + stageInfo.map(function (stage) { return "<option value='" + stage[0] + "'>" + stage[1] + "</option>"; }).join("") + "</select></label><span class='unet-stage-status' id='unet-stage-status'>All stages are highlighted.</span></div>" +
       "<div class='unet-stage-grid'>" + stageInfo.map(function (stage) { return "<figure class='unet-stage-card' data-unet-stage='" + stage[0] + "'><div class='unet-stage-heading'><strong>" + stage[1] + "</strong><span>step " + (stageInfo.indexOf(stage) + 1) + "</span></div><canvas id='unet-stage-" + stage[0] + "' width='320' height='220' aria-label='" + stage[1] + " visualization'></canvas><figcaption>" + stage[2] + "</figcaption></figure>"; }).join("") + "</div>" +
+      "<section class='unet-final-results'><div class='unet-final-heading'><div><p class='eyebrow'>Final U-Net result</p><h3>From per-pixel scores to a segmentation mask</h3><p>The final 1×1 convolution produces class scores at every pixel. This panel turns the foreground score into a binary teaching mask and overlays it on the selected image.</p></div><span class='unet-result-badge'>256×192×2 output</span></div><div class='unet-final-grid'><figure><canvas id='unet-final-mask' width='320' height='220' aria-label='Final conceptual segmentation mask'></canvas><figcaption><strong>Predicted mask</strong><br>Dark blue = background; green = foreground region selected by the conceptual score threshold.</figcaption></figure><figure><canvas id='unet-final-overlay' width='320' height='220' aria-label='Final conceptual segmentation overlay'></canvas><figcaption><strong>Segmentation overlay</strong><br>The same mask is drawn on top of the original image so the spatial result is easy to inspect.</figcaption></figure></div><p class='unet-result-summary' id='unet-result-summary' aria-live='polite'>The final result will update when an image is selected.</p></section>" +
       "<div class='unet-explanation-row'><div><strong>Encoder → bottleneck</strong><span>Pooling trades resolution for context.</span></div><div><strong>Up-conv → skip</strong><span>Upsampling restores a grid; concatenation restores detail.</span></div><div><strong>1×1 conv → softmax</strong><span>Each pixel receives a class score and probability distribution.</span></div></div>" +
       "<p class='unet-explorer-note'><strong>Teaching note:</strong> this is a deterministic browser visualization of the U-Net data flow, not a trained segmentation model. It makes the tensor shapes and operations visible; a real U-Net learns the filters and predicts the mask from training data.</p>" +
     "</div>";
@@ -56,6 +57,9 @@
   var inputCaption = host.querySelector("#unet-input-caption");
   var stageSelect = host.querySelector("#unet-stage-select");
   var stageStatus = host.querySelector("#unet-stage-status");
+  var finalMask = host.querySelector("#unet-final-mask");
+  var finalOverlay = host.querySelector("#unet-final-overlay");
+  var resultSummary = host.querySelector("#unet-result-summary");
   var state = { image: null, objectUrl: "", sourceName: "Horse riding", activePreset: "horse" };
 
   function clamp(value, low, high) {
@@ -236,6 +240,72 @@
     context.putImageData(overlay, 0, 0);
   }
 
+  function percentile(values, fraction) {
+    var sorted = Array.from(values).sort(function (a, b) { return a - b; });
+    return sorted[Math.max(0, Math.min(sorted.length - 1, Math.floor(fraction * (sorted.length - 1))))];
+  }
+
+  function makeForegroundMask(score, width, height) {
+    var threshold = percentile(score, 0.65);
+    var mask = new Uint8Array(score.length);
+    for (var i = 0; i < score.length; i++) mask[i] = score[i] >= threshold ? 1 : 0;
+    return { mask: mask, threshold: threshold };
+  }
+
+  function drawFinalMask(canvas, mask, width, height) {
+    var context = canvas.getContext("2d");
+    var imageData = context.createImageData(canvas.width, canvas.height);
+    for (var y = 0; y < canvas.height; y++) {
+      var sourceY = Math.min(height - 1, Math.floor(y * height / canvas.height));
+      for (var x = 0; x < canvas.width; x++) {
+        var sourceX = Math.min(width - 1, Math.floor(x * width / canvas.width));
+        var foreground = mask[sourceY * width + sourceX] === 1;
+        var p = (y * canvas.width + x) * 4;
+        imageData.data[p] = foreground ? 37 : 16;
+        imageData.data[p + 1] = foreground ? 205 : 44;
+        imageData.data[p + 2] = foreground ? 146 : 73;
+        imageData.data[p + 3] = 255;
+      }
+    }
+    context.putImageData(imageData, 0, 0);
+  }
+
+  function drawFinalOverlay(canvas, imageData, mask, edges, width, height) {
+    var context = canvas.getContext("2d");
+    var sourceCanvas = document.createElement("canvas");
+    sourceCanvas.width = width;
+    sourceCanvas.height = height;
+    sourceCanvas.getContext("2d").putImageData(imageData, 0, 0);
+    drawCover(context, sourceCanvas, canvas.width, canvas.height);
+    var overlay = context.createImageData(canvas.width, canvas.height);
+    for (var y = 0; y < canvas.height; y++) {
+      var sourceY = Math.min(height - 1, Math.floor(y * height / canvas.height));
+      for (var x = 0; x < canvas.width; x++) {
+        var sourceX = Math.min(width - 1, Math.floor(x * width / canvas.width));
+        var index = sourceY * width + sourceX;
+        var p = (y * canvas.width + x) * 4;
+        var boundary = edges[index] > 0.78;
+        if (boundary) {
+          overlay.data[p] = 236;
+          overlay.data[p + 1] = 72;
+          overlay.data[p + 2] = 153;
+          overlay.data[p + 3] = 190;
+        } else if (mask[index] === 1) {
+          overlay.data[p] = 33;
+          overlay.data[p + 1] = 205;
+          overlay.data[p + 2] = 143;
+          overlay.data[p + 3] = 112;
+        } else {
+          overlay.data[p] = 10;
+          overlay.data[p + 1] = 35;
+          overlay.data[p + 2] = 59;
+          overlay.data[p + 3] = 30;
+        }
+      }
+    }
+    context.putImageData(overlay, 0, 0);
+  }
+
   function renderPipeline() {
     if (!state.image) return;
     var imageData = getSquareSource(state.image);
@@ -247,7 +317,8 @@
     var contextMap = normalize(resizeAverage(blur(gray, width, height), width, height, 32, 24));
     var upsampled = resizeNearest(contextMap, 32, 24, width, height);
     var fused = normalize(Float32Array.from(upsampled, function (value, i) { return 0.55 * value + 0.45 * edges[i]; }));
-    var score = normalize(Float32Array.from(fused, function (value, i) { return 0.62 * value + 0.38 * colors[i]; }));
+    var score = normalize(blur(Float32Array.from(fused, function (value, i) { return 0.62 * value + 0.38 * colors[i]; }), width, height));
+    var finalResult = makeForegroundMask(score, width, height);
     var canvases = {
       input: host.querySelector("#unet-stage-input"),
       encoder: host.querySelector("#unet-stage-encoder"),
@@ -262,7 +333,11 @@
     drawHeatmap(canvases.upconv, upsampled, width, height, "up");
     drawHeatmap(canvases.fusion, fused, width, height, "fusion");
     drawMask(canvases.output, imageData, score, width, height);
-    status.textContent = "U-Net stages updated for “" + state.sourceName + "”. The final panel is a conceptual mask, not a trained prediction.";
+    drawFinalMask(finalMask, finalResult.mask, width, height);
+    drawFinalOverlay(finalOverlay, imageData, finalResult.mask, edges, width, height);
+    var foregroundPixels = finalResult.mask.reduce(function (sum, value) { return sum + value; }, 0);
+    resultSummary.innerHTML = "<strong>Conceptual output:</strong> " + foregroundPixels.toLocaleString() + " of " + finalResult.mask.length.toLocaleString() + " pixels are assigned to the foreground class (" + (100 * foregroundPixels / finalResult.mask.length).toFixed(1) + "%). The illustrative threshold is " + finalResult.threshold.toFixed(2) + ". A trained U-Net would learn this score map from labeled masks.";
+    status.textContent = "U-Net stages and final result updated for “" + state.sourceName + "”. This is a conceptual mask, not a trained prediction.";
   }
 
   function releaseObjectUrl() {
