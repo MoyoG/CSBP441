@@ -873,7 +873,7 @@
       const status=host.querySelector("#sift-template-status"), bestOutput=host.querySelector("#sift-template-best");
       const state={image:editor.image,template:editor.template,candidateLocations:editor.candidateLocations,source:"Generated example",presetId:"generated",searchScale:null,imageFile:null,templateFile:null,resolution:64};
       const canvasSize=320;
-      const range=matrix=>{const values=matrix.flat(),min=Math.min(...values),max=Math.max(...values);return {min,max};};
+      const range=matrix=>{let min=Infinity,max=-Infinity;matrix.forEach(row=>row.forEach(value=>{if(value<min)min=value;if(value>max)max=value;}));return {min,max};};
       const cellGeometry=matrix=>{const rows=matrix.length,cols=matrix[0].length,cell=Math.min(280/Math.max(rows,cols),canvasSize);return {rows,cols,cell,offsetX:(canvasSize-cols*cell)/2,offsetY:(canvasSize-rows*cell)/2};};
       const drawMatrix=(canvas,matrix,overlays=[])=>{
         const context=canvas.getContext("2d"), geometry=cellGeometry(matrix), limits=range(matrix), spread=limits.max-limits.min||1;
