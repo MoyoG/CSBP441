@@ -737,6 +737,7 @@ window.COURSE_DATA = {
     notebooks: [],
     problemIntro: "Attempt each YOLO problem, then reveal the complete worked solution when you are ready.",
     problemDomain: "yolo",
+    yoloDetectorLab: true,
     problemQuestions: [
       ["YOLOv1 output dimensions", "", ""],
       ["Confidence score and filtering", "", ""],
