@@ -22,6 +22,11 @@
     "dining table", "dog", "horse", "motorcycle", "person", "potted plant", "sheep", "couch",
     "train", "tv"
   ];
+  var SAMPLE_IMAGES = [
+    {name: "Horse riding", file: "assets/yolo-sample-horse-riding.jpg", alt: "A rider on a horse in a grassland", detail: "horse + person · wide scene"},
+    {name: "Convolution features", file: "assets/yolo-sample-convolution.png", alt: "A convolution feature visualization with a yellow car", detail: "car · feature visualization"},
+    {name: "Cat close-up", file: "assets/yolo-sample-cat.png", alt: "Close-up portrait of a cat", detail: "cat · close-up"}
+  ];
   var YOLOV1_BASE = "https://raw.githubusercontent.com/hakanakgun/vision-evolution-lab/7562098306b2f14cd7553b87085cfc1d6b19a9f0/assets/models/yolov1/";
   var YOLOV1_PARTS = [
     {file: "part-00.bin", bytes: 95000000},
@@ -75,7 +80,9 @@
   var state = {
     image: null,
     imageUrl: "",
+    imageUrlIsObject: false,
     imageName: "",
+    selectedSampleIndex: null,
     lastResult: null,
     ortPromise: null,
     activeAbort: null,
@@ -114,14 +121,19 @@
           "<option value='yolo9'>YOLO9-Tiny · COCO80 · 8 MB (latest compact)</option>",
           "<option value='yolov1'>Original YOLOv1 · VOC20 · 541 MB</option>",
         "</select><small>Choose the model before running inference.</small></label>",
-        "<label class='yolo-detector-field'><span>Image to analyse</span><input id='yolo-image-file' type='file' accept='image/*'><small>The image stays in this browser; only model files are fetched.</small></label>",
+        "<label class='yolo-detector-field'><span>Upload an image</span><input id='yolo-image-file' type='file' accept='image/*'><small>The image stays in this browser; only model files are fetched.</small></label>",
         "<label class='yolo-detector-field yolo-number-field'><span>Confidence threshold</span><input id='yolo-confidence' type='number' min='0.01' max='0.99' step='0.01' value='0.25'><small>Remove candidates with score below this value.</small></label>",
         "<label class='yolo-detector-field yolo-number-field'><span>NMS IoU threshold</span><input id='yolo-iou' type='number' min='0.01' max='0.99' step='0.01' value='0.45'><small>Suppress same-class boxes when IoU is above this value.</small></label>",
         "<div class='yolo-detector-buttons'><button class='button button-primary' id='yolo-run' type='button' disabled>Run real detection</button><button class='button button-secondary' id='yolo-cancel' type='button' hidden>Cancel download</button><button class='button button-secondary' id='yolo-clear' type='button'>Clear result</button></div>",
       "</div>",
+      "<div class='yolo-sample-picker'><div class='yolo-sample-heading'><strong>Or choose a course example</strong><small>Bundled examples are ready to use; they stay in the browser just like an uploaded image.</small></div><div class='yolo-sample-grid' id='yolo-sample-presets'>" +
+        SAMPLE_IMAGES.map(function (sample, index) {
+          return "<button class='yolo-sample-button' type='button' data-sample-index='" + index + "' aria-pressed='false'><img src='" + escapeHTML(sample.file) + "' alt='" + escapeHTML(sample.alt) + "' loading='lazy'><span>" + escapeHTML(sample.name) + "</span><small>" + escapeHTML(sample.detail) + "</small></button>";
+        }).join("") +
+      "</div></div>",
       "<div id='yolo-model-note' class='yolo-model-note'></div>",
       "<div id='yolo-lab-status' class='yolo-lab-status' role='status' aria-live='polite'>Choose an image, then run a detector.</div>",
-      "<div class='yolo-input-row'><figure class='yolo-input-figure'><p class='eyebrow'>Uploaded image</p><img id='yolo-input-preview' alt='Uploaded image preview' hidden><figcaption id='yolo-input-caption'>No image selected yet.</figcaption></figure><div class='yolo-formula-card' id='yolo-formulas'></div></div>",
+      "<div class='yolo-input-row'><figure class='yolo-input-figure'><p class='eyebrow'>Selected image</p><img id='yolo-input-preview' alt='Selected image preview' hidden><figcaption id='yolo-input-caption'>No image selected yet.</figcaption></figure><div class='yolo-formula-card' id='yolo-formulas'></div></div>",
       "<div class='yolo-stage-grid'>",
         "<figure class='yolo-stage-card'><div class='yolo-stage-heading'><strong>1 · All decoded candidates</strong><span id='yolo-candidate-count'>Waiting</span></div><canvas id='yolo-stage-candidates' aria-label='All decoded candidate boxes'></canvas><figcaption>Every valid box emitted by the selected model is drawn. To keep the canvas readable, text labels identify the top 20 by score; the table below gives their exact values.</figcaption></figure>",
         "<figure class='yolo-stage-card'><div class='yolo-stage-heading'><strong>2 · After confidence filtering</strong><span id='yolo-filtered-count'>Waiting</span></div><canvas id='yolo-stage-filtered' aria-label='Candidate boxes after confidence filtering'></canvas><figcaption>Boxes with score &lt; the confidence threshold are removed before NMS.</figcaption></figure>",
@@ -139,6 +151,7 @@
   var runButton = host.querySelector("#yolo-run");
   var cancelButton = host.querySelector("#yolo-cancel");
   var clearButton = host.querySelector("#yolo-clear");
+  var sampleHost = host.querySelector("#yolo-sample-presets");
   var preview = host.querySelector("#yolo-input-preview");
   var previewCaption = host.querySelector("#yolo-input-caption");
   var modelNote = host.querySelector("#yolo-model-note");
@@ -684,6 +697,48 @@
     }
   }
 
+  function releaseImageUrl() {
+    if (state.imageUrl && state.imageUrlIsObject) window.URL.revokeObjectURL(state.imageUrl);
+    state.imageUrl = "";
+    state.imageUrlIsObject = false;
+  }
+
+  function updateSampleSelection(selectedIndex) {
+    sampleHost.querySelectorAll("[data-sample-index]").forEach(function (button) {
+      var isSelected = selectedIndex !== null && Number(button.getAttribute("data-sample-index")) === selectedIndex;
+      button.classList.toggle("selected", isSelected);
+      button.setAttribute("aria-pressed", isSelected ? "true" : "false");
+    });
+  }
+
+  function selectImageFromUrl(url, name, sourceLabel, isObjectUrl, sampleIndex) {
+    releaseImageUrl();
+    state.imageUrl = url;
+    state.imageUrlIsObject = Boolean(isObjectUrl);
+    state.imageName = name;
+    state.selectedSampleIndex = sampleIndex === undefined ? null : sampleIndex;
+    updateSampleSelection(state.selectedSampleIndex);
+    var image = new Image();
+    image.onload = function () {
+      if (state.imageUrl !== url) return;
+      state.image = image;
+      preview.src = url;
+      preview.hidden = false;
+      previewCaption.textContent = name + " · " + image.naturalWidth + "×" + image.naturalHeight + " · " + sourceLabel;
+      runButton.disabled = false;
+      resetResult();
+      setStatus("Image ready. Choose thresholds and run the detector.", "success");
+    };
+    image.onerror = function () {
+      if (state.imageUrl === url) releaseImageUrl();
+      state.image = null;
+      updateSampleSelection(null);
+      setStatus("The image could not be decoded by this browser.", "error");
+      runButton.disabled = true;
+    };
+    image.src = url;
+  }
+
   imageFile.addEventListener("change", function () {
     var file = imageFile.files && imageFile.files[0];
     if (!file) return;
@@ -692,24 +747,17 @@
       imageFile.value = "";
       return;
     }
-    if (state.imageUrl) window.URL.revokeObjectURL(state.imageUrl);
-    state.imageUrl = window.URL.createObjectURL(file);
-    state.imageName = file.name;
-    var image = new Image();
-    image.onload = function () {
-      state.image = image;
-      preview.src = state.imageUrl;
-      preview.hidden = false;
-      previewCaption.textContent = file.name + " · " + image.naturalWidth + "×" + image.naturalHeight + " · local browser input";
-      runButton.disabled = false;
-      resetResult();
-      setStatus("Image ready. Choose thresholds and run the detector.", "success");
-    };
-    image.onerror = function () {
-      setStatus("The image could not be decoded by this browser.", "error");
-      runButton.disabled = true;
-    };
-    image.src = state.imageUrl;
+    selectImageFromUrl(window.URL.createObjectURL(file), file.name, "local browser upload", true, null);
+  });
+
+  sampleHost.querySelectorAll("[data-sample-index]").forEach(function (button) {
+    button.addEventListener("click", function () {
+      var index = Number(button.getAttribute("data-sample-index"));
+      var sample = SAMPLE_IMAGES[index];
+      if (!sample) return;
+      imageFile.value = "";
+      selectImageFromUrl(sample.file, sample.name, "bundled course example", false, index);
+    });
   });
 
   modelSelect.addEventListener("change", function () {
@@ -739,6 +787,7 @@
     if (state.image) setStatus("Result cleared. The selected image is still ready.", "success");
   });
   window.addEventListener("pagehide", function () {
+    releaseImageUrl();
     state.modelCache.forEach(function (loaded) {
       if (loaded.session && loaded.session.release) loaded.session.release().catch(function () {});
     });
