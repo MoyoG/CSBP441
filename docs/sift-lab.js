@@ -24,6 +24,11 @@
     '<figure><canvas id="sift-feature-image" class="sift-feature-canvas" role="img" aria-label="Search image with SIFT keypoints"></canvas><figcaption>Image: detected interest points, scale circles, and dominant directions</figcaption></figure>',
     '<figure><canvas id="sift-feature-template" class="sift-feature-canvas" role="img" aria-label="Template image with SIFT keypoints"></canvas><figcaption>Template: detected interest points, scale circles, and dominant directions</figcaption></figure>',
     '</div>',
+    '<div class="sift-feature-analysis-grid">',
+    '<figure><canvas id="sift-feature-histogram" class="sift-feature-analysis-canvas" role="img" aria-label="Principal orientation histogram for a selected template keypoint"></canvas><figcaption>Template principal-orientation histogram: the tallest bin gives the dominant direction.</figcaption></figure>',
+    '<figure><canvas id="sift-feature-descriptor" class="sift-feature-analysis-canvas" role="img" aria-label="128-dimensional SIFT descriptor signature for a selected template keypoint"></canvas><figcaption>Template descriptor signature: 4×4 spatial cells × 8 direction bins = 128 values.</figcaption></figure>',
+    '</div>',
+    '<p id="sift-feature-template-analysis" class="sift-feature-analysis" aria-live="polite"></p>',
     '<figure class="sift-feature-match-figure"><canvas id="sift-feature-matches" class="sift-feature-match-canvas" role="img" aria-label="Corresponding SIFT feature matches between image and template"></canvas><figcaption>Corresponding feature matches: the same local structure is linked across the image and template.</figcaption></figure>',
     '<p id="sift-feature-status" class="sift-feature-status" aria-live="polite">Detecting SIFT features...</p>',
     '<p id="sift-feature-result" class="sift-feature-result" aria-live="polite"></p>',
@@ -40,9 +45,12 @@
   var resetButton = document.getElementById("sift-feature-reset");
   var imageCanvas = document.getElementById("sift-feature-image");
   var templateCanvas = document.getElementById("sift-feature-template");
+  var histogramCanvas = document.getElementById("sift-feature-histogram");
+  var descriptorCanvas = document.getElementById("sift-feature-descriptor");
   var matchCanvas = document.getElementById("sift-feature-matches");
   var status = document.getElementById("sift-feature-status");
   var resultText = document.getElementById("sift-feature-result");
+  var templateAnalysis = document.getElementById("sift-feature-template-analysis");
   var imageCache = {};
   var state = {
     mode: "transform",
@@ -235,7 +243,7 @@
     return selected;
   }
 
-  function dominantOrientation(matrix, point) {
+  function orientationHistogram(matrix, point) {
     var bins = 36;
     var histogram = Array(bins).fill(0);
     var radius = Math.max(3, Math.round(point.scale * 4));
@@ -250,11 +258,24 @@
         histogram[bin] += gradient.magnitude * weight;
       }
     }
+    return histogram;
+  }
+
+  function peakBin(histogram) {
     var bestBin = 0;
-    for (var index = 1; index < bins; index += 1) {
+    for (var index = 1; index < histogram.length; index += 1) {
       if (histogram[index] > histogram[bestBin]) bestBin = index;
     }
-    return (bestBin + 0.5) * (2 * Math.PI / bins) - Math.PI;
+    return bestBin;
+  }
+
+  function orientationForBin(bin, binCount) {
+    return (bin + 0.5) * (2 * Math.PI / binCount) - Math.PI;
+  }
+
+  function dominantOrientation(matrix, point) {
+    var histogram = orientationHistogram(matrix, point);
+    return orientationForBin(peakBin(histogram), histogram.length);
   }
 
   function descriptorFor(matrix, point) {
@@ -442,7 +463,100 @@
     context.stroke();
   }
 
-  function drawSingleCanvas(canvas, matrix, features, matches, side) {
+  function drawSelectedKeypoint(context, point, rect) {
+    var x = rect.x + point.x * rect.scale;
+    var y = rect.y + point.y * rect.scale;
+    var radius = Math.max(5, point.scale * 4 * rect.scale) + 4;
+    context.save();
+    context.strokeStyle = "#173a5e";
+    context.lineWidth = 2;
+    context.setLineDash([5, 3]);
+    context.beginPath();
+    context.arc(x, y, radius, 0, 2 * Math.PI);
+    context.stroke();
+    context.restore();
+  }
+
+  function drawOrientationHistogram(canvas, histogram, point) {
+    canvas.width = 360;
+    canvas.height = 220;
+    var context = canvas.getContext("2d");
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = "#f5f8fa";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = "#173a5e";
+    context.font = "700 13px sans-serif";
+    context.fillText("Principal orientation histogram", 10, 17);
+    var plot = { x: 28, y: 30, width: 320, height: 150 };
+    var maximum = Math.max.apply(null, histogram) || 1;
+    var peak = peakBin(histogram);
+    var barWidth = plot.width / histogram.length;
+    context.strokeStyle = "rgba(23,58,94,.28)";
+    context.lineWidth = 1;
+    context.beginPath();
+    context.moveTo(plot.x, plot.y + plot.height);
+    context.lineTo(plot.x + plot.width, plot.y + plot.height);
+    context.stroke();
+    histogram.forEach(function (value, index) {
+      var barHeight = value / maximum * (plot.height - 8);
+      context.fillStyle = index === peak ? "#087f75" : "#8aaeb5";
+      context.fillRect(plot.x + index * barWidth + 1, plot.y + plot.height - barHeight, Math.max(2, barWidth - 2), barHeight);
+    });
+    context.fillStyle = "#536675";
+    context.font = "11px sans-serif";
+    [[0, "−180°"], [9, "−90°"], [18, "0°"], [27, "90°"], [35, "180°"]].forEach(function (label) {
+      var labelX = plot.x + (label[0] + 0.5) * barWidth;
+      context.fillText(label[1], labelX - (label[1].length * 2.4), plot.y + plot.height + 17);
+    });
+    var angle = orientationForBin(peak, histogram.length) * 180 / Math.PI;
+    context.fillStyle = "#173a5e";
+    context.font = "700 12px sans-serif";
+    context.fillText("peak: " + Math.round(angle) + "°", 10, 207);
+    canvas.setAttribute("aria-label", "Principal orientation histogram; peak at " + Math.round(angle) + " degrees for the selected template keypoint");
+    return point;
+  }
+
+  function drawDescriptorSignature(canvas, descriptor, point) {
+    canvas.width = 360;
+    canvas.height = 220;
+    var context = canvas.getContext("2d");
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = "#f5f8fa";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = "#173a5e";
+    context.font = "700 13px sans-serif";
+    context.fillText("SIFT descriptor signature", 10, 17);
+    var plot = { x: 42, y: 34, width: 300, height: 144 };
+    var rows = 16;
+    var columns = 8;
+    var cellWidth = plot.width / columns;
+    var cellHeight = plot.height / rows;
+    var maximum = Math.max.apply(null, descriptor) || 1;
+    for (var row = 0; row < rows; row += 1) {
+      for (var column = 0; column < columns; column += 1) {
+        var value = descriptor[row * columns + column] / maximum;
+        context.fillStyle = "rgba(8,127,117," + (0.10 + 0.90 * value) + ")";
+        context.fillRect(plot.x + column * cellWidth, plot.y + row * cellHeight, cellWidth, cellHeight);
+        context.strokeStyle = "rgba(255,255,255,.65)";
+        context.lineWidth = 1;
+        context.strokeRect(plot.x + column * cellWidth, plot.y + row * cellHeight, cellWidth, cellHeight);
+      }
+      if (row % 4 === 0) {
+        context.strokeStyle = "#173a5e";
+        context.lineWidth = 1.5;
+        context.strokeRect(plot.x, plot.y + row * cellHeight, plot.width, cellHeight * 4);
+      }
+    }
+    context.fillStyle = "#536675";
+    context.font = "11px sans-serif";
+    for (var bin = 0; bin < columns; bin += 1) context.fillText(String(bin + 1), plot.x + bin * cellWidth + cellWidth / 2 - 3, plot.y + plot.height + 15);
+    context.fillText("8 orientation bins per cell", 10, 207);
+    context.fillText("darker = larger descriptor value", 190, 207);
+    canvas.setAttribute("aria-label", "128-dimensional SIFT descriptor signature for the selected template keypoint, shown as 16 spatial rows and 8 orientation bins");
+    return point;
+  }
+
+  function drawSingleCanvas(canvas, matrix, features, matches, side, selectedPoint) {
     canvas.width = 360;
     canvas.height = 250;
     var context = canvas.getContext("2d");
@@ -457,6 +571,7 @@
     var matchedPoints = new Set(matches.map(function (match) { return match[side]; }));
     features.keypoints.forEach(function (point) { drawKeypoint(context, point, rect, matchedPoints.has(point)); });
     matches.forEach(function (match) { if (!features.keypoints.includes(match[side])) drawKeypoint(context, match[side], rect, true); });
+    if (selectedPoint) drawSelectedKeypoint(context, selectedPoint, rect);
   }
 
   function drawMatchesCanvas(canvas, pair, imageFeatures, templateFeatures, matches) {
@@ -538,9 +653,19 @@
       var templateFeatures = detectAndDescribe(pair.template.matrix);
       var imageFeatures = detectAndDescribe(pair.image.matrix);
       var matches = pair.kind === "transform" ? transformMatches(templateFeatures, pair) : matchFeatures(templateFeatures, imageFeatures);
+      var templatePoint = matches.length ? matches[0].template : templateFeatures.keypoints[0];
       if (request !== state.request) return;
       drawSingleCanvas(imageCanvas, pair.image.matrix, imageFeatures, matches, "image");
-      drawSingleCanvas(templateCanvas, pair.template.matrix, templateFeatures, matches, "template");
+      drawSingleCanvas(templateCanvas, pair.template.matrix, templateFeatures, matches, "template", templatePoint);
+      if (templatePoint) {
+        drawOrientationHistogram(histogramCanvas, orientationHistogram(pair.template.matrix, templatePoint), templatePoint);
+        drawDescriptorSignature(descriptorCanvas, templatePoint.descriptor, templatePoint);
+        templateAnalysis.textContent = "Template analysis point: (" + Math.round(templatePoint.x) + ", " + Math.round(templatePoint.y) + ") · scale " + templatePoint.scale.toFixed(2) + " · principal orientation " + Math.round(templatePoint.orientation * 180 / Math.PI) + "° · descriptor length 128.";
+      } else {
+        templateAnalysis.textContent = "No template keypoint was detected at this resolution.";
+        histogramCanvas.getContext("2d").clearRect(0, 0, histogramCanvas.width, histogramCanvas.height);
+        descriptorCanvas.getContext("2d").clearRect(0, 0, descriptorCanvas.width, descriptorCanvas.height);
+      }
       drawMatchesCanvas(matchCanvas, pair, imageFeatures, templateFeatures, matches);
       status.textContent = pair.kind === "transform" ? "Educational SIFT-style transform demo: the template is inserted into the image at the selected scale and rotation." : "SIFT-style DoG keypoints and orientation-normalized descriptors were matched between the two supplied views.";
       resultText.textContent = "Image keypoints: " + imageFeatures.keypoints.length + " · Template keypoints: " + templateFeatures.keypoints.length + " · Corresponding matches: " + matches.length + ". Green marks are the matched points.";
