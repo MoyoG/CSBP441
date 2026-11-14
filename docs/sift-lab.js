@@ -312,7 +312,11 @@
     return descriptor.map(function (value) { return value / norm; });
   }
 
-  function detectAndDescribe(matrix) {
+  function detectAndDescribe(matrix, options) {
+    options = options || {};
+    var maxCount = options.maxCount || 55;
+    var minDistance = options.minDistance || 9;
+    var thresholdQuantile = options.thresholdQuantile || 0.92;
     var scales = [1, 1.6, 2.4, 3.6, 5.2, 7.2];
     var blurred = scales.map(function (sigma) { return gaussianBlur(matrix, sigma); });
     var dogs = [];
@@ -334,7 +338,7 @@
       }
     });
     magnitudes.sort(function (a, b) { return b - a; });
-    var threshold = Math.max(3, magnitudes[Math.min(magnitudes.length - 1, Math.floor(magnitudes.length * 0.92))] || 3);
+    var threshold = Math.max(3, magnitudes[Math.min(magnitudes.length - 1, Math.floor(magnitudes.length * thresholdQuantile))] || 3);
     var candidates = [];
     dogs.forEach(function (dog, dogIndex) {
       for (var row = 10; row < height - 10; row += 1) {
@@ -357,7 +361,19 @@
         }
       }
     });
-    var keypoints = selectSpatial(candidates, 55, 9);
+    var keypoints = selectSpatial(candidates, maxCount, minDistance);
+    if (options.focusRect) {
+      var focusCandidates = candidates.filter(function (candidate) {
+        return candidate.x >= options.focusRect.left && candidate.x <= options.focusRect.left + options.focusRect.width && candidate.y >= options.focusRect.top && candidate.y <= options.focusRect.top + options.focusRect.height;
+      });
+      var focusPoints = selectSpatial(focusCandidates, options.focusCount || 70, Math.max(4, minDistance - 2));
+      focusPoints.forEach(function (candidate) {
+        var separated = keypoints.every(function (point) {
+          return Math.hypot(point.x - candidate.x, point.y - candidate.y) >= Math.max(4, minDistance - 2);
+        });
+        if (separated) keypoints.push(candidate);
+      });
+    }
     if (keypoints.length < 10) {
       var gradientCandidates = [];
       for (var gradientRow = 10; gradientRow < height - 10; gradientRow += 2) {
@@ -365,9 +381,9 @@
           gradientCandidates.push({ x: gradientColumn, y: gradientRow, scale: 1, score: gradientAt(matrix, gradientColumn, gradientRow).magnitude });
         }
       }
-      keypoints = selectSpatial(keypoints.concat(gradientCandidates), 45, 9);
+      keypoints = selectSpatial(keypoints.concat(gradientCandidates), maxCount, minDistance);
     }
-    var descriptorScaleFactors = [0.50, 0.75, 1, 1.5, 2, 3];
+    var descriptorScaleFactors = options.descriptorScaleFactors || [0.50, 0.75, 1, 1.5, 2, 3];
     keypoints.forEach(function (point) {
       point.orientation = dominantOrientation(matrix, point);
       point.descriptor = descriptorFor(matrix, point);
@@ -849,8 +865,16 @@
     try {
       var pair = await buildPair();
       if (request !== state.request) return;
-      var templateFeatures = detectAndDescribe(pair.template.matrix);
-      var imageFeatures = detectAndDescribe(pair.image.matrix);
+      var alignment = pair.kind === "uploaded" ? estimateTemplateAlignment(pair) : null;
+      var uploadedDescriptorScales = [0.35, 0.50, 0.70, 1, 1.4, 2, 3, 4];
+      var templateFeatureOptions = pair.kind === "uploaded" ? { maxCount: 120, minDistance: 4, thresholdQuantile: 0.72, descriptorScaleFactors: uploadedDescriptorScales } : null;
+      var imageFeatureOptions = pair.kind === "uploaded" ? { maxCount: 120, minDistance: 4, thresholdQuantile: 0.72, descriptorScaleFactors: uploadedDescriptorScales } : null;
+      if (alignment) {
+        imageFeatureOptions.focusRect = { left: alignment.left, top: alignment.top, width: alignment.width, height: alignment.height };
+        imageFeatureOptions.focusCount = 100;
+      }
+      var templateFeatures = detectAndDescribe(pair.template.matrix, templateFeatureOptions);
+      var imageFeatures = detectAndDescribe(pair.image.matrix, imageFeatureOptions);
       var descriptorCandidates = pair.kind === "transform" ? [] : matchFeatures(templateFeatures, imageFeatures);
       var matchInfo;
       if (pair.kind === "transform") {
@@ -858,9 +882,8 @@
       } else {
         matchInfo = verifyGeometry(descriptorCandidates, pair);
         if (pair.kind === "uploaded") {
-          var alignment = estimateTemplateAlignment(pair);
           var alignedMatches = alignment ? alignmentMatches(templateFeatures, imageFeatures, alignment) : [];
-          if (alignment && alignment.score > 0.42 && alignedMatches.length >= 4) {
+          if (alignment && alignment.score > 0.30 && alignedMatches.length >= 4) {
             matchInfo = { matches: alignedMatches, candidates: descriptorCandidates.length, verified: true, aligned: true, alignment: alignment };
           }
         }
