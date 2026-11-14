@@ -19,7 +19,7 @@
     '<label class="sift-feature-control">Upload template<input id="sift-feature-template-upload" type="file" accept="image/*"></label>',
     '<button class="button button-secondary" id="sift-feature-reset" type="button">Use transform demo</button>',
     '</div>',
-    '<p class="sift-feature-legend"><span class="sift-feature-legend-match">Green circles/arrows</span> = matched keypoints; <span class="sift-feature-legend-detected">amber circles/arrows</span> = other detected keypoints; lines connect corresponding descriptors.</p>',
+    '<p class="sift-feature-legend"><span class="sift-feature-legend-match">Green circles/arrows</span> = geometrically verified matches; <span class="sift-feature-legend-detected">amber circles/arrows</span> = other detected keypoints or tentative matches; lines connect corresponding descriptors.</p>',
     '<div class="sift-feature-visual-grid">',
     '<figure><canvas id="sift-feature-image" class="sift-feature-canvas" role="img" aria-label="Search image with SIFT keypoints"></canvas><figcaption>Image: detected interest points, scale circles, and dominant directions</figcaption></figure>',
     '<figure><canvas id="sift-feature-template" class="sift-feature-canvas" role="img" aria-label="Template image with SIFT keypoints"></canvas><figcaption>Template: detected interest points, scale circles, and dominant directions</figcaption></figure>',
@@ -395,19 +395,96 @@
           second = { image: imagePoint, distance: distance };
         }
       });
-      if (best) proposed.push({ template: templatePoint, image: best.image, distance: best.distance, ratio: second ? best.distance / Math.max(second.distance, 0.0001) : 0 });
+      if (best) proposed.push({ template: templatePoint, image: best.image, distance: best.distance, ratio: second ? best.distance / Math.max(second.distance, 0.0001) : 0, verified: false });
     });
     proposed.sort(function (a, b) { return a.distance - b.distance; });
-    var usedImage = new Set();
-    var matches = [];
-    proposed.forEach(function (candidate) {
-      if (matches.length >= 24 || usedImage.has(candidate.image)) return;
-      if (candidate.ratio < 0.92 || matches.length < 4) {
-        matches.push(candidate);
-        usedImage.add(candidate.image);
-      }
+    var reverseBest = new Map();
+    imageFeatures.keypoints.forEach(function (imagePoint) {
+      var best = null;
+      templateFeatures.keypoints.forEach(function (templatePoint) {
+        var distance = descriptorDistance(templatePoint.descriptor, imagePoint.descriptor);
+        if (!best || distance < best.distance) best = { template: templatePoint, distance: distance };
+      });
+      if (best) reverseBest.set(imagePoint, best.template);
     });
-    return matches;
+    var mutual = proposed.filter(function (candidate) { return reverseBest.get(candidate.image) === candidate.template; });
+    var strict = mutual.filter(function (candidate) { return candidate.ratio < 0.85; });
+    return (strict.length >= 3 ? strict : mutual.slice(0, Math.min(6, mutual.length))).slice(0, 32);
+  }
+
+  function solveLinearSystem(matrix, rightSide) {
+    var augmented = matrix.map(function (row, index) { return row.slice().concat([rightSide[index]]); });
+    for (var column = 0; column < rightSide.length; column += 1) {
+      var pivot = column;
+      for (var candidate = column + 1; candidate < augmented.length; candidate += 1) {
+        if (Math.abs(augmented[candidate][column]) > Math.abs(augmented[pivot][column])) pivot = candidate;
+      }
+      if (Math.abs(augmented[pivot][column]) < 0.000001) return null;
+      var swap = augmented[column];
+      augmented[column] = augmented[pivot];
+      augmented[pivot] = swap;
+      var pivotValue = augmented[column][column];
+      for (var normalize = column; normalize < augmented[column].length; normalize += 1) augmented[column][normalize] /= pivotValue;
+      for (var row = 0; row < augmented.length; row += 1) {
+        if (row === column) continue;
+        var factor = augmented[row][column];
+        if (Math.abs(factor) < 0.000001) continue;
+        for (var eliminate = column; eliminate < augmented[row].length; eliminate += 1) augmented[row][eliminate] -= factor * augmented[column][eliminate];
+      }
+    }
+    return augmented.map(function (row) { return row[row.length - 1]; });
+  }
+
+  function estimateAffine(matches) {
+    var matrix = [];
+    var rightSide = [];
+    matches.forEach(function (match) {
+      var x = match.template.x;
+      var y = match.template.y;
+      var X = match.image.x;
+      var Y = match.image.y;
+      matrix.push([x, y, 1, 0, 0, 0]);
+      rightSide.push(X);
+      matrix.push([0, 0, 0, x, y, 1]);
+      rightSide.push(Y);
+    });
+    var solution = solveLinearSystem(matrix, rightSide);
+    return solution ? { a: solution[0], b: solution[1], tx: solution[2], c: solution[3], d: solution[4], ty: solution[5] } : null;
+  }
+
+  function affineError(model, match) {
+    var predictedX = model.a * match.template.x + model.b * match.template.y + model.tx;
+    var predictedY = model.c * match.template.x + model.d * match.template.y + model.ty;
+    return Math.hypot(predictedX - match.image.x, predictedY - match.image.y);
+  }
+
+  function verifyGeometry(matches, pair) {
+    var imageMatrix = pair.image.matrix;
+    var templateMatrix = pair.template.matrix;
+    var threshold = Math.max(3.5, Math.min(imageMatrix[0].length, imageMatrix.length) * 0.04);
+    if (matches.length < 3) return { matches: matches.map(function (match) { match.verified = false; return match; }), candidates: matches.length, verified: false, threshold: threshold };
+    var candidates = matches.slice(0, 24);
+    var best = { inliers: [], error: Infinity };
+    for (var first = 0; first < candidates.length - 2; first += 1) {
+      for (var second = first + 1; second < candidates.length - 1; second += 1) {
+        for (var third = second + 1; third < candidates.length; third += 1) {
+          var one = candidates[first].template;
+          var two = candidates[second].template;
+          var three = candidates[third].template;
+          var area = Math.abs((two.x - one.x) * (three.y - one.y) - (two.y - one.y) * (three.x - one.x));
+          if (area < 6) continue;
+          var model = estimateAffine([candidates[first], candidates[second], candidates[third]]);
+          if (!model) continue;
+          var inliers = candidates.filter(function (match) { return affineError(model, match) <= threshold; });
+          var error = inliers.reduce(function (sum, match) { return sum + affineError(model, match); }, 0);
+          if (inliers.length > best.inliers.length || (inliers.length === best.inliers.length && error < best.error)) best = { inliers: inliers, error: error };
+        }
+      }
+    }
+    if (best.inliers.length >= 3) {
+      return { matches: best.inliers.map(function (match) { match.verified = true; return match; }), candidates: matches.length, verified: true, threshold: threshold };
+    }
+    return { matches: matches.slice(0, Math.min(4, matches.length)).map(function (match) { match.verified = false; return match; }), candidates: matches.length, verified: false, threshold: threshold };
   }
 
   function transformMatches(templateFeatures, pair) {
@@ -461,6 +538,10 @@
     context.moveTo(x, y);
     context.lineTo(x + Math.cos(point.orientation) * radius * 1.8, y + Math.sin(point.orientation) * radius * 1.8);
     context.stroke();
+  }
+
+  function matchIsVerified(match) {
+    return match.verified !== false;
   }
 
   function drawSelectedKeypoint(context, point, rect) {
@@ -568,9 +649,9 @@
     context.fillStyle = "#173a5e";
     context.font = "700 14px sans-serif";
     context.fillText(side === "image" ? "Image" : "Template", 10, 16);
-    var matchedPoints = new Set(matches.map(function (match) { return match[side]; }));
+    var matchedPoints = new Set(matches.filter(matchIsVerified).map(function (match) { return match[side]; }));
     features.keypoints.forEach(function (point) { drawKeypoint(context, point, rect, matchedPoints.has(point)); });
-    matches.forEach(function (match) { if (!features.keypoints.includes(match[side])) drawKeypoint(context, match[side], rect, true); });
+    matches.forEach(function (match) { if (!features.keypoints.includes(match[side])) drawKeypoint(context, match[side], rect, matchIsVerified(match)); });
     if (selectedPoint) drawSelectedKeypoint(context, selectedPoint, rect);
   }
 
@@ -589,26 +670,27 @@
     context.font = "700 14px sans-serif";
     context.fillText("Image", 10, 16);
     context.fillText("Template", 385, 16);
-    var imageMatched = new Set(matches.map(function (match) { return match.image; }));
-    var templateMatched = new Set(matches.map(function (match) { return match.template; }));
+    var imageMatched = new Set(matches.filter(matchIsVerified).map(function (match) { return match.image; }));
+    var templateMatched = new Set(matches.filter(matchIsVerified).map(function (match) { return match.template; }));
     imageFeatures.keypoints.forEach(function (point) { drawKeypoint(context, point, imageRect, imageMatched.has(point)); });
     templateFeatures.keypoints.forEach(function (point) { drawKeypoint(context, point, templateRect, templateMatched.has(point)); });
     matches.forEach(function (match) {
-      if (!imageFeatures.keypoints.includes(match.image)) drawKeypoint(context, match.image, imageRect, true);
-      if (!templateFeatures.keypoints.includes(match.template)) drawKeypoint(context, match.template, templateRect, true);
+      if (!imageFeatures.keypoints.includes(match.image)) drawKeypoint(context, match.image, imageRect, matchIsVerified(match));
+      if (!templateFeatures.keypoints.includes(match.template)) drawKeypoint(context, match.template, templateRect, matchIsVerified(match));
     });
     matches.forEach(function (match, index) {
       var imageX = imageRect.x + match.image.x * imageRect.scale;
       var imageY = imageRect.y + match.image.y * imageRect.scale;
       var templateX = templateRect.x + match.template.x * templateRect.scale;
       var templateY = templateRect.y + match.template.y * templateRect.scale;
-      context.strokeStyle = "rgba(8,127,117,.62)";
+      var verified = matchIsVerified(match);
+      context.strokeStyle = verified ? "rgba(8,127,117,.62)" : "rgba(184,107,0,.48)";
       context.lineWidth = 1.2;
       context.beginPath();
       context.moveTo(imageX, imageY);
       context.lineTo(templateX, templateY);
       context.stroke();
-      context.fillStyle = "#087f75";
+      context.fillStyle = verified ? "#087f75" : "#b86b00";
       context.font = "600 10px sans-serif";
       context.fillText(String(index + 1), imageX + 4, imageY - 4);
       context.fillText(String(index + 1), templateX + 4, templateY - 4);
@@ -623,16 +705,16 @@
       if (!state.imageFile || !state.templateFile) throw new Error("upload both an image and a template");
       var uploadedImage = await loadImage(state.imageFile);
       var uploadedTemplate = await loadImage(state.templateFile);
-      return { image: rasterizeImage(uploadedImage, 256), template: rasterizeImage(uploadedTemplate, 128), kind: "uploaded" };
+      return { image: rasterizeImage(uploadedImage, 256), template: rasterizeImage(uploadedTemplate, 128), kind: "uploaded", label: "Uploaded image and template" };
     }
     var templateImage = await loadImage(templateSource);
     var template = rasterizeImage(templateImage, 96);
     if (state.mode === "transform") {
       var demo = makeTransformDemo(template);
-      return { image: { canvas: demo.canvas, matrix: demo.matrix, width: demo.canvas.width, height: demo.canvas.height }, template: template, transform: demo.transform, kind: "transform" };
+      return { image: { canvas: demo.canvas, matrix: demo.matrix, width: demo.canvas.width, height: demo.canvas.height }, template: template, transform: demo.transform, kind: "transform", label: "Car scale-and-rotation transform demo" };
     }
     var sceneImage = await loadImage("assets/sift-car-scene.png");
-    return { image: rasterizeImage(sceneImage, 256), template: template, kind: "supplied" };
+    return { image: rasterizeImage(sceneImage, 256), template: template, kind: "supplied", label: state.mode === "diagram-rear" ? "Supplied car diagram and rear template" : "Supplied car diagram and front template" };
   }
 
   function syncControls() {
@@ -652,7 +734,8 @@
       if (request !== state.request) return;
       var templateFeatures = detectAndDescribe(pair.template.matrix);
       var imageFeatures = detectAndDescribe(pair.image.matrix);
-      var matches = pair.kind === "transform" ? transformMatches(templateFeatures, pair) : matchFeatures(templateFeatures, imageFeatures);
+      var matchInfo = pair.kind === "transform" ? { matches: transformMatches(templateFeatures, pair), candidates: templateFeatures.keypoints.length, verified: true } : verifyGeometry(matchFeatures(templateFeatures, imageFeatures), pair);
+      var matches = matchInfo.matches;
       var templatePoint = matches.length ? matches[0].template : templateFeatures.keypoints[0];
       if (request !== state.request) return;
       drawSingleCanvas(imageCanvas, pair.image.matrix, imageFeatures, matches, "image");
@@ -667,8 +750,8 @@
         descriptorCanvas.getContext("2d").clearRect(0, 0, descriptorCanvas.width, descriptorCanvas.height);
       }
       drawMatchesCanvas(matchCanvas, pair, imageFeatures, templateFeatures, matches);
-      status.textContent = pair.kind === "transform" ? "Educational SIFT-style transform demo: the template is inserted into the image at the selected scale and rotation." : "SIFT-style DoG keypoints and orientation-normalized descriptors were matched between the two supplied views.";
-      resultText.textContent = "Image keypoints: " + imageFeatures.keypoints.length + " · Template keypoints: " + templateFeatures.keypoints.length + " · Corresponding matches: " + matches.length + ". Green marks are the matched points.";
+      status.textContent = pair.kind === "transform" ? "Educational SIFT-style transform demo: the template is inserted into the image at the selected scale and rotation." : (matchInfo.verified ? pair.label + ". Only matches that agree with one affine geometric transform are shown in green." : pair.label + ". No strong affine consensus was found; amber lines are tentative descriptor matches.");
+      resultText.textContent = "Image keypoints: " + imageFeatures.keypoints.length + " · Template keypoints: " + templateFeatures.keypoints.length + " · Descriptor candidates: " + matchInfo.candidates + " · Displayed matches: " + matches.length + (matchInfo.verified ? " verified." : " tentative.");
     } catch (error) {
       status.textContent = "SIFT explorer could not run: " + error.message + ".";
       resultText.textContent = "Use the transform demo or upload both an image and a template.";
